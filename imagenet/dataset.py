@@ -19,7 +19,7 @@ import cPickle
 import fnmatch
 from collections import defaultdict
 
-IMG_SOURCE = 'ardila@mh17.mit.edu:~/imagenet/'
+IMG_SOURCE = 'ardila@mh17.mit.edu:~/.skdata/imagenet/hvm_imgs/'
 
 
 class IMAGENET():
@@ -43,14 +43,14 @@ class IMAGENET():
     def _get_synset_meta(self):
         words = self.get_word_dictionary()
         definitions = self.get_definition_dictionary()
-        filenames = self.get_filenames_dict()
+        filenames = self.get_filename_dictionary()
         wnid_list = self.get_wnid_list()
         tree_struct = self.get_tree_structure(wnid_list)
-        synset_meta = {wnid: {'words': words[wnid],
-                              'definition': definitions[wnid],
-                              'filenames': filenames[wnid],
-                              'parents': tree_struct[wnid]['parents'],
-                              'children': tree_struct[wnid]['children']} for wnid in wnid_list}
+        synset_meta = dict([(wnid, {'words': words[wnid],
+                                    'definition': definitions[wnid],
+                                    'filenames': filenames[wnid],
+                                    'parents': tree_struct[wnid]['parents'],
+                                    'children': tree_struct[wnid]['children']}) for wnid in wnid_list])
         return synset_meta
 
     def get_wnid_list(self):
@@ -80,26 +80,25 @@ class IMAGENET():
             cPickle.dump(tree, open(os.path.join(self.path, filename), 'wb'))
         return tree
 
-    def get_filenames_dict(self):
+    def get_filename_dictionary(self):
         filename = 'filenames_dict.p'
         try:
-            filenames_dict = cPickle.load(open(os.path.join(self.path, filename, 'rb')))
+            filenames_dict = cPickle.load(open(os.path.join(self.path, filename), 'rb'))
         except IOError:
             print 'Filename dictionary not found, attempting to copy from IMG_SOURCE'
-            # Run this code at IMG_SOURCE to generate the dictionary
-            # from collections import default dict
-            # import os
-            # import cPickle
-            # filenames_dict = defaultdict(list)
-            # path = os.path.expanduser('~/imagenet_download')
-            # filenames = os.listdir(path)
-            # for f in filenames:
-            #     wnid = f.split('_')[0]
-            #     im_id = f.split('_')[1].rstrip('.JPEG')
-            #     filenames_dict[wnid] = f
-            # cPickle.dump(filenames_dict, open('filenames_dict.p', 'wb'))
+# Run this code at IMG_SOURCE to generate the dictionary
+# from collections import defaultdict
+# import os
+# import cPickle
+# filenames_dict = defaultdict(list)
+# filenames = os.listdir(path)
+# for f in filenames:
+#     wnid = f.split('_')[0]
+#     im_id = f.split('_')[1].rstrip('.JPEG')
+#     filenames_dict[wnid].append(f)
+# cPickle.dump(filenames_dict, open('filenames_dict.p', 'wb'))
             download_file_to_folder(filename, self.path)
-            filenames_dict = cPickle.load(open(os.path.join(self.path, filename, 'rb')))
+            filenames_dict = cPickle.load(open(os.path.join(self.path, filename), 'rb'))
         return filenames_dict
 
     def get2013_Categories(self):
