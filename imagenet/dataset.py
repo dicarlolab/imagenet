@@ -238,6 +238,21 @@ class IMAGENET():
                                                 crop=crop, mask=mask, mode=mode, cache=self.img_cache,
                                                 source=IMG_SOURCE), file_names)
 
+    def parent_child(self, synset_list):
+        """
+        Tests whether synsets in a list overlap in hierarchy.
+        Returns true if any synset is a descendant of any other
+        synset_list: list of strings (wnids)
+        """
+        urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
+        value = False  # innocent until proven guilty
+        for synset in synset_list:
+            children = [wnid.rstrip().lstrip('-') for wnid in urlopen(urlbase+synset).readlines()[1:]]
+            if any(child in synset_list for child in children):
+                value = True
+                break
+        return value
+
 
 class cache():
     def __init__(self, path, cache_set=None):
