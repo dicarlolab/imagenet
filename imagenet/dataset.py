@@ -82,7 +82,7 @@ class IMAGENET():
         all_synsets_url = 'http://www.image-net.org/api/text/imagenet.synset.obtain_synset_list'
         synsets_list = [wnid.rstrip() for wnid in urlopen(all_synsets_url).readlines()[:-2]]
         if thresh > 0:
-            parser = BeautifulSoup(urlopen("http://www.image-net.org/api/xml/ReleaseStatus.xml"))
+            synsets_list = filter(lambda x: self.wnid_meta[x]['num_images'] >= thresh, synsets_list)
         return synsets_list
 
     def get_tree_structure(self, wnid_list):
