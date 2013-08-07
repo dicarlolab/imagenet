@@ -18,6 +18,7 @@ import skdata.larray as larray
 import cPickle
 import fnmatch
 from collections import defaultdict
+import itertools
 
 IMG_SOURCE = 'ardila@mh17.mit.edu:~/.skdata/imagenet/hvm_imgs/'
 
@@ -29,16 +30,35 @@ class IMAGENET():
 
     @property
     def meta(self):
-        """Loads the meta from file, if it exists.
-        If it doesn't exist, this means images have not been downloaded"""
+        """Loads the wnid meta from file, if it exists.
+        If it doesn't exist, calls _get_meta"""
         if not hasattr(self, '_meta'):
             try:
-                tabular_load = tb.io.loadbinary(self.path + '/imagenet_meta.npz')
+                tabular_load = tb.io.loadbinary(self.path + 'meta/imagenet_meta.npz')
                 # This seems like a flaw with tabular's loadbinary.
                 self._meta = tb.tabarray(records=tabular_load[0], dtype=tabular_load[1])
             except IOError:
-                print 'Meta not found in path'
+                print 'Could not load wnid meta from path, constructing'
+                self._wnid_meta = self._get_meta()
         return self._meta
+
+    def _get_meta(self):
+        filenames = itertools.chain.from_iterable([entry['filenames'] for entry in self.wnid_meta])
+        wnids = [filename.split('_')[0] for filename in filenames]
+        meta = tb.tabarray(records=zip(filenames, wnids), names=['filename', 'wnid'])
+        tb.io.savebinary('meta/imagenet_meta.npz', meta)
+
+    @property
+    def wnid_meta(self):
+        """Loads the wnid meta from file, if it exists.
+        If it doesn't exist, calls _get_wnid_meta"""
+        if not hasattr(self, '_wnid_meta'):
+            try:
+                self._wnid_meta = cPickle.load(open(os.path.join(self.path, 'meta/wnid_meta.p'), 'rb'))
+            except IOError:
+                print 'Could not load wnid meta from path, constructing'
+                self._wnid_meta = self._get_synset_meta()
+        return self._wnid_meta
 
     def _get_synset_meta(self):
         words = self.get_word_dictionary()
@@ -49,14 +69,21 @@ class IMAGENET():
         synset_meta = dict([(wnid, {'words': words[wnid],
                                     'definition': definitions[wnid],
                                     'filenames': filenames[wnid],
+                                    'num_images': len(filenames[wnid]),
                                     'parents': tree_struct[wnid]['parents'],
                                     'children': tree_struct[wnid]['children']}) for wnid in wnid_list])
+        cPickle.dump(synset_meta, open(os.path.join(self.path, 'meta/wnid_meta.p'), 'wb'))
         return synset_meta
 
-    def get_wnid_list(self):
+    def get_wnid_list(self, thresh=0):
+        """
+        thresh: int, minimum number of files to be included on the list
+        """
         all_synsets_url = 'http://www.image-net.org/api/text/imagenet.synset.obtain_synset_list'
-        all_synsets_list = [wnid.rstrip() for wnid in urlopen(all_synsets_url).readlines()[:-2]]
-        return all_synsets_list
+        synsets_list = [wnid.rstrip() for wnid in urlopen(all_synsets_url).readlines()[:-2]]
+        if thresh > 0:
+            parser = BeautifulSoup(urlopen("http://www.image-net.org/api/xml/ReleaseStatus.xml"))
+        return synsets_list
 
     def get_tree_structure(self, wnid_list):
         filename = 'tree_structure.p'
@@ -86,12 +113,14 @@ class IMAGENET():
             filenames_dict = cPickle.load(open(os.path.join(self.path, filename), 'rb'))
         except IOError:
             print 'Filename dictionary not found, attempting to copy from IMG_SOURCE'
-# Run this code at IMG_SOURCE to generate the dictionary
+# Run this code at IMG_SOURCE to build the dictionary.
+# os.listdir is very slow, so allow for about 24hr runttime.
 # from collections import defaultdict
 # import os
 # import cPickle
 # filenames_dict = defaultdict(list)
 # filenames = os.listdir(path)
+# imgs = [f in filenames if f.endswith('.JPEG')]
 # for f in filenames:
 #     wnid = f.split('_')[0]
 #     im_id = f.split('_')[1].rstrip('.JPEG')
