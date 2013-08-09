@@ -1,1 +1,1 @@
-import datasetfrom dataset import IMAGENET
+import datasetfrom dataset import Imagenet

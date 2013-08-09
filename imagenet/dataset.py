@@ -20,121 +20,88 @@ import fnmatch
 from collections import defaultdict
 import itertools
 
-IMG_SOURCE = 'ardila@mh17.mit.edu:~/.skdata/imagenet/hvm_imgs/'
+
+main_dir = os.path.expanduser('~/skdata/imagenet')
+
+IMG_SOURCE = 'ardila@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/imagenet_download'
+
+#TODO : deal with username and accesskey so that we can share this code
 
 
-class IMAGENET():
-    def __init__(self, path=os.path.expanduser('~/.skdata/imagenet')):
-        self.path = path
-        self.img_cache = cache(path)
+def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonly=False, path=os.getcwd(),
+                              username='ardila', accesskey='bd662acb4866553500f17babd5992810e0b5a439'):
+    """
+    Stores a random #num images for synsets specified by synsets from the latest release to path specified
+    Since files are stored as tar files online, the entire synset must be downloaded to access random images.
 
-    @property
-    def meta(self):
-        """Loads the wnid meta from file, if it exists.
-        If it doesn't exist, calls _get_meta"""
-        if not hasattr(self, '_meta'):
-            try:
-                tabular_load = tb.io.loadbinary(self.path + 'meta/imagenet_meta.npz')
-                # This seems like a flaw with tabular's loadbinary.
-                self._meta = tb.tabarray(records=tabular_load[0], dtype=tabular_load[1])
-            except IOError:
-                print 'Could not load wnid meta from path, constructing'
-                self._wnid_meta = self._get_meta()
-        return self._meta
+    If 'all' is passed as the num argument, all images are stored.
 
-    def _get_meta(self):
-        filenames = itertools.chain.from_iterable([entry['filenames'] for entry in self.wnid_meta])
-        wnids = [filename.split('_')[0] for filename in filenames]
-        meta = tb.tabarray(records=zip(filenames, wnids), names=['filename', 'wnid'])
-        tb.io.savebinary('meta/imagenet_meta.npz', meta)
+    If the argument firstonly is set to true, then download times can be reduced by only extracting the first
+    few images
+    """
+    if not os.path.exists(path + '/'):
+        os.makedirs(path + '/')
+    synsets = list(synsets)
+    random.seed(seed)
+    kept_names = []
+    kept_synset_list = []
+    for i, synset in enumerate(synsets):
+        synset_names = []
+        url = 'http://www.image-net.org/download/synset?' + \
+              'synset=' + str(synset) + \
+              '&username=' + username + \
+              '&accesskey=' + accesskey + \
+              '&release=latest'
+        print i
+        url_file = urlopen(url)
+        tar_file = tarfile.open(fileobj=url_file, mode='r|')
+        if firstonly and not (num_per_synset == 'all'):
+            keep_idx = xrange(num_per_synset)
+            for tarinfo in tar_file:
+                synset_names.append(tarinfo.name)
+                tar_file.extract(tarinfo, path)
+        else:
+            for tarinfo in tar_file:
+                synset_names.append(tarinfo.name)
+                tar_file.extract(tarinfo, path)
+            if num_per_synset == 'all':
+                keep_idx = range(len(synset_names))
+            else:
+                keep_idx = sample(range(len(synset_names)), num_per_synset)
+            files_to_remove = frozenset(synset_names) - frozenset([synset_names[idx] for idx in keep_idx])
+            for file_to_remove in files_to_remove:
+                os.remove(path + '/' + file_to_remove)
+        kept_names.extend([synset_names[idx] for idx in keep_idx])
+        kept_synset_list.extend([synset] * len(keep_idx))
+    meta = tb.tabarray(records=zip(kept_names, kept_synset_list), names=['filename', 'synset'])
+    return meta
 
-    @property
-    def wnid_meta(self):
-        """Loads the wnid meta from file, if it exists.
-        If it doesn't exist, calls _get_wnid_meta"""
-        if not hasattr(self, '_wnid_meta'):
-            try:
-                self._wnid_meta = cPickle.load(open(os.path.join(self.path, 'meta/wnid_meta.p'), 'rb'))
-            except IOError:
-                print 'Could not load wnid meta from path, constructing'
-                self._wnid_meta = self._get_synset_meta()
-        return self._wnid_meta
 
-    def _get_synset_meta(self):
-        words = self.get_word_dictionary()
-        definitions = self.get_definition_dictionary()
-        filenames = self.get_filename_dictionary()
-        wnid_list = self.get_wnid_list()
-        tree_struct = self.get_tree_structure(wnid_list)
-        synset_meta = dict([(wnid, {'words': words[wnid],
-                                    'definition': definitions[wnid],
-                                    'filenames': filenames[wnid],
-                                    'num_images': len(filenames[wnid]),
-                                    'parents': tree_struct[wnid]['parents'],
-                                    'children': tree_struct[wnid]['children']}) for wnid in wnid_list])
-        cPickle.dump(synset_meta, open(os.path.join(self.path, 'meta/wnid_meta.p'), 'wb'))
-        return synset_meta
+def download_2013_ILSCRV_synsets(num_per_synset='all', seed=None, path=os.getcwd(), firstonly=False):
+    """
+    Stores a random #num images for the 2013 ILSCRV synsets from the latest release.
+    Since files are stored as tar files online, the entire synset must be downloaded to access random images.
 
-    def get_wnid_list(self, thresh=0):
-        """
-        thresh: int, minimum number of files to be included on the list
-        """
-        all_synsets_url = 'http://www.image-net.org/api/text/imagenet.synset.obtain_synset_list'
-        synsets_list = [wnid.rstrip() for wnid in urlopen(all_synsets_url).readlines()[:-2]]
-        if thresh > 0:
-            synsets_list = filter(lambda x: self.wnid_meta[x]['num_images'] >= thresh, synsets_list)
-        return synsets_list
+    If 'all' is passed as the num argument, all images are stored.
 
-    def get_tree_structure(self, wnid_list):
-        filename = 'tree_structure.p'
-        try:
-            tree = cPickle.load(open(os.path.join(self.path, filename), 'rb'))
-        except IOError:
-            urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
-            tree = defaultdict(dict)
-            # multiple_parents = []
-            for i, synset in enumerate(wnid_list):
-                if i % 100 == 0:
-                    print float(i)/len(wnid_list)
-                children = [wnid.rstrip().lstrip('-') for wnid in urlopen(urlbase+synset).readlines()[1:]]
-                tree[synset]['children'] = children
-                for child in children:
-                    if tree[child].get('parents') is not None:
-                        tree[child]['parents'].append(synset)
-                        # multiple_parents.append(child)
-                    else:
-                        tree[child]['parents'] = [synset]
-            cPickle.dump(tree, open(os.path.join(self.path, filename), 'wb'))
-        return tree
+    If the argument firstonly is set to true, then download times can be reduced by only extracting the first
+    few images
 
-    def get_filename_dictionary(self):
-        filename = 'filenames_dict.p'
-        try:
-            filenames_dict = cPickle.load(open(os.path.join(self.path, filename), 'rb'))
-        except IOError:
-            print 'Filename dictionary not found, attempting to copy from IMG_SOURCE'
-# Run this code at IMG_SOURCE to build the dictionary.
-# os.listdir is very slow, so allow for about 24hr runttime.
-# from collections import defaultdict
-# import os
-# import cPickle
-# filenames_dict = defaultdict(list)
-# filenames = os.listdir(path)
-# imgs = [f in filenames if f.endswith('.JPEG')]
-# for f in filenames:
-#     wnid = f.split('_')[0]
-#     im_id = f.split('_')[1].rstrip('.JPEG')
-#     filenames_dict[wnid].append(f)
-# cPickle.dump(filenames_dict, open('filenames_dict.p', 'wb'))
-            download_file_to_folder(filename, self.path)
-            filenames_dict = cPickle.load(open(os.path.join(self.path, filename), 'rb'))
-        return filenames_dict
+    Returns a tabular meta object that has a record for each image containing 2 fields
+        synset: the synset of the image
+        filename: the filename of the image
+    """
+    synsets_not_ready_yet = ['n04399382']  # Somehow, teddy bears are not ready for download as of 6/14/2013
+    synsets = get2013_Categories()
+    synsets = set(synsets) - set(synsets_not_ready_yet)
+    return download_images_by_synset(synsets, seed=seed, num_per_synset=num_per_synset, path=path, firstonly=firstonly)
 
-    def get2013_Categories(self):
-        """Get list of wnids in 2013 ILSCRV Challenge by scraping the challenge's website"""
+
+def get2013_Categories():
+        """Get list of synsets in 2013 ILSCRV Challenge by scraping the challenge's website"""
         name_list = []
-        wnid_list = []
-        #Grabbed website to extract wnids for all images
+        synset_list = []
+        #Grabbed website to extract synsets for all images
         parser = BeautifulSoup(urlopen("http://www.image-net.org/challenges/LSVRC/2013/browse-synsets"))
 
         def is_a_2013_category(tag):
@@ -145,7 +112,7 @@ class IMAGENET():
             :param tag: tag object
             """
             if tag.has_attr('href'):
-                if 'wnid' in tag['href']:
+                if 'synset' in tag['href']:
                     return True
             else:
                 return False
@@ -154,133 +121,175 @@ class IMAGENET():
         for linkTag in linkTags:
             name_list.append(linkTag.string)
             link = linkTag['href']
-            wnid_list.append(link.partition('wnid=')[2])
-        return wnid_list
+            synset_list.append(link.partition('synset=')[2])
+        return synset_list
 
-    def get_word_dictionary(self):
-        words_text = urlopen("http://www.image-net.org/archive/words.txt").readlines()
-        word_dictionary = {}
-        for row in words_text:
-            word_dictionary[row.split()[0]] = ' '.join(row.split()[1:]).rstrip('\n')
-        return word_dictionary
 
-    def get_definition_dictionary(self):
-        gloss_text = urlopen("http://www.image-net.org/archive/gloss.txt").readlines()
-        definition_dictionary = {}
-        for row in gloss_text:
-            definition_dictionary[row.split()[0]] = ' '.join(row.split()[1:]).rstrip('\n')
-        return definition_dictionary
-
-    def download_images_by_wnid(self, wnids, seed=None, num_per_synset=100, firstonly=False, path=os.getcwd(),
-                                username='ardila', accesskey='bd662acb4866553500f17babd5992810e0b5a439'):
-        """
-        Stores a random #num images for synsets specified by wnids from the latest release to path specified
-        Since files are stored as tar files online, the entire synset must be downloaded to access random images.
-
-        If 'all' is passed as the num argument, all images are stored.
-
-        If the argument firstonly is set to true, then download times can be reduced by only extracting the first
-        few images
-
-        This method overwrites previous fetches: files and metadata are deleted
-        """
-        if not os.path.exists(path + '/'):
-            os.makedirs(path + '/')
-        wnids = list(wnids)
-        random.seed(seed)
-        kept_names = []
-        kept_wnid_list = []
-        if hasattr(self, '_meta'):
-            files_to_remove = np.unique(self.meta['filename'])
-            for file_to_remove in files_to_remove:
-                try:
-                    print path + '/' + file_to_remove
-                    os.remove(path + '/' + file_to_remove)
-                except OSError:
-                    print "metadata is stale, clear cache directory"
-        for i, wnid in enumerate(wnids):
-            synset_names = []
-            url = 'http://www.image-net.org/download/synset?' + \
-                  'wnid=' + str(wnid) + \
-                  '&username=' + username + \
-                  '&accesskey=' + accesskey + \
-                  '&release=latest'
-            print i
-            url_file = urlopen(url)
-            tar_file = tarfile.open(fileobj=url_file, mode='r|')
-            if firstonly and not (num_per_synset == 'all'):
-                keep_idx = xrange(num_per_synset)
-                for tarinfo in tar_file:
-                    synset_names.append(tarinfo.name)
-                    tar_file.extract(tarinfo, path)
-            else:
-                for tarinfo in tar_file:
-                    synset_names.append(tarinfo.name)
-                    tar_file.extract(tarinfo, path)
-                if num_per_synset == 'all':
-                    keep_idx = range(len(synset_names))
-                else:
-                    keep_idx = sample(range(len(synset_names)), num_per_synset)
-                files_to_remove = frozenset(synset_names) - frozenset([synset_names[idx] for idx in keep_idx])
-                for file_to_remove in files_to_remove:
-                    os.remove(path + '/' + file_to_remove)
-            kept_names.extend([synset_names[idx] for idx in keep_idx])
-            kept_wnid_list.extend([wnid] * len(keep_idx))
-        meta = tb.tabarray(records=zip(kept_names, kept_wnid_list), names=['filename', 'wnid'])
-        self._meta = meta
-        self.path = path
-        tb.io.savebinary('imagenet_meta.npz', self._meta)
-
-    def download_2013_ILSCRV_synsets(self, num_per_synset=100, seed=None,
-                                     path=os.getcwd(), firstonly=False):
-        """
-        Stores a random #num images for the 2013 ILSCRV synsets from the latest release.
-        Since files are stored as tar files online, the entire synset must be downloaded to access random images.
-
-        If 'all' is passed as the num argument, all images are stored.
-
-        If the argument firstonly is set to true, then download times can be reduced by only extracting the first
-        few images
-
-        Returns a tabular meta object that has a record for each image containing 2 fields
-            wnid: the wnid of the image
-            filename: the filename of the image
-        """
-        synsets_not_ready_yet = ['n04399382']  # Somehow, teddy bears are not ready for download as of 6/14/2013
-        wnids = self.get2013_Categories()
-        wnids = set(wnids) - set(synsets_not_ready_yet)
-        self.download_images_by_wnid(wnids, seed=seed, num_per_synset=num_per_synset, path=path, firstonly=firstonly)
-
-    def get_images(self, resize_to=(256, 256), mode='L', dtype='float32',
-                   crop=None, mask=None, normalize=True):
-        """
-        Create a lazily reevaluated array with preprocessing specified by the parameters
-        resize_to: Image is resized to the tuple given here (note: not reshaped)
-        dtype: The datatype of the image array
-        mode: 'RGB' or 'L' sepcifies whether or not to store color images
-        mask: Image object which is used to mask the image
-        crop: array of [minx, maxx, miny, maxy] crop box applied after resize
-        normalize: If true, then the image set to zero mean and unit standard deviation
-        """
-        file_names = [filename for filename in self.meta['filename']]
-        return larray.lmap(ImgDownloaderResizer(resize_to=resize_to, dtype=dtype, normalize=normalize,
-                                                crop=crop, mask=mask, mode=mode, cache=self.img_cache,
-                                                source=IMG_SOURCE), file_names)
-
-    def parent_child(self, synset_list):
+def parent_child(synset_list):
         """
         Tests whether synsets in a list overlap in hierarchy.
         Returns true if any synset is a descendant of any other
-        synset_list: list of strings (wnids)
+        synset_list: list of strings (synsets)
         """
-        urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
+        urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?synset='
         value = False  # innocent until proven guilty
         for synset in synset_list:
-            children = [wnid.rstrip().lstrip('-') for wnid in urlopen(urlbase+synset).readlines()[1:]]
+            children = [synset.rstrip().lstrip('-') for synset in urlopen(urlbase+synset).readlines()[1:]]
             if any(child in synset_list for child in children):
                 value = True
                 break
         return value
+
+
+def get_full_filename_dictionary():
+#This is a (maybe _the_) key piece of metadata, so it is installed to a specific location locally
+    filename = 'filenames_dict.p'
+    folder = '~/.skdata/imagenet'
+    try:
+        filenames_dict = cPickle.load(open(os.path.join(folder, filename), 'rb'))
+    except IOError:
+        print 'Filename dictionary not found, attempting to copy from IMG_SOURCE'
+# Run this code at IMG_SOURCE to build the dictionary.
+# os.listdir is very slow, so allow for about 24hr runtime.
+# from collections import defaultdict
+# import os
+# import cPickle
+# filenames_dict = defaultdict(list)
+# filenames = os.listdir(path)
+# imgs = [f in filenames if f.endswith('.JPEG')]
+# for f in filenames:
+#     synset = f.split('_')[0]
+#     im_id = f.split('_')[1].rstrip('.JPEG')
+#     filenames_dict[synset].append(f)
+# cPickle.dump(filenames_dict, open('filenames_dict.p', 'wb'))
+        download_file_to_folder(filename, folder)
+        filenames_dict = cPickle.load(open(os.path.join(folder, filename), 'rb'))
+    return filenames_dict
+
+
+def get_word_dictionary():
+    words_text = urlopen("http://www.image-net.org/archive/words.txt").readlines()
+    word_dictionary = {}
+    for row in words_text:
+        word_dictionary[row.split()[0]] = ' '.join(row.split()[1:]).rstrip('\n')
+    return word_dictionary
+
+
+def get_definition_dictionary():
+    gloss_text = urlopen("http://www.image-net.org/archive/gloss.txt").readlines()
+    definition_dictionary = {}
+    for row in gloss_text:
+        definition_dictionary[row.split()[0]] = ' '.join(row.split()[1:]).rstrip('\n')
+    return definition_dictionary
+
+
+def get_tree_structure(synset_list):
+    filename = 'filenames_dict.p'
+    folder = '~/.skdata/imagenet'
+    try:
+        full_tree_structure = cPickle.load(open(os.path.join(folder, filename), 'rb'))
+        tree = {synset: full_tree_structure[synset] for synset in synset_list}
+    except IOError:
+        urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
+        tree = defaultdict(dict)
+        # multiple_parents = []
+        for i, synset in enumerate(synset_list):
+            if i % 100 == 0:
+                print "Calculating tree structure using api"
+                print float(i)/len(synset_list)
+            children = [wnid.rstrip().lstrip('-') for wnid in urlopen(urlbase+synset).readlines()[1:]]
+            tree[synset]['children'] = children
+            for child in children:
+                if tree[child].get('parents') is not None:
+                    tree[child]['parents'].append(synset)
+                    # multiple_parents.append(child)
+                else:
+                    tree[child]['parents'] = [synset]
+    return tree
+
+
+class Imagenet():
+    def __init__(self,
+                 meta_path=os.path.expanduser('~/.skdata/imagenet/meta'),
+                 img_path=os.path.expanduser('~/.skdata/imagenet/images')):
+        self.img_path = img_path
+        self.meta_path = meta_path
+        self.cache = cache(img_path)
+        self.default_preproc = {'resize_to': (256, 256), 'mode': 'L', 'dtype': 'float32',
+                                'crop': None, 'mask': None, 'normalize': True}
+
+    @property
+    def meta(self):
+        if not hasattr(self, '_meta'):
+            self._synset_meta = self._get_meta()
+        return self._meta
+
+    def _get_meta(self):
+        """Loads the synset meta from file, if it exists.
+        If it doesn't exist, calls _get_meta"""
+        try:
+            tabular_load = tb.io.loadbinary(self.meta_path + 'meta.npz')
+            # This seems like a flaw with tabular's loadbinary.
+            self._meta = tb.tabarray(records=tabular_load[0], dtype=tabular_load[1])
+        except IOError:
+            print 'Could not load meta from file, constructing'
+            filenames = itertools.chain.from_iterable([entry['filenames'] for entry in self.synset_meta])
+            synsets = [filename.split('_')[0] for filename in filenames]
+            meta = tb.tabarray(records=zip(filenames, synsets), names=['filename', 'synset'])
+            tb.io.savebinary(self.meta_path + 'meta.npz', meta)
+
+    @property
+    def synset_meta(self):
+        if not hasattr(self, '_synset_meta'):
+            self._synset_meta = self._get_synset_meta()
+        return self._synset_meta
+
+    def _get_synset_meta(self):
+        """Loads the synset meta from file, if it exists.
+        If it doesn't exist, calls _get_synset_meta"""
+        try:
+            synset_meta = cPickle.load(open(os.path.join(self.meta_path, 'synset_meta.p'), 'rb'))
+        except IOError:
+            print 'Could not load synset meta from file, constructing'
+            synset_list = self.get_synset_list()
+            words = get_word_dictionary()
+            definitions = get_definition_dictionary()
+            filenames = self.get_filename_dictionary(synset_list)
+            tree_struct = get_tree_structure(synset_list)
+            synset_meta = dict([(synset, {'words': words[synset],
+                                          'definition': definitions[synset],
+                                          'filenames': filenames[synset],
+                                          'num_images': len(filenames[synset]),
+                                          'parents': tree_struct[synset]['parents'],
+                                          'children': tree_struct[synset]['children']}) for synset in synset_list])
+            cPickle.dump(synset_meta, open(os.path.join(self.meta_path, 'synset_meta.p'), 'wb'))
+        return synset_meta
+
+    def get_synset_list(self, thresh=0):
+        """
+        thresh: int, minimum number of files to be included on the list
+        """
+        all_synsets_url = 'http://www.image-net.org/api/text/imagenet.synset.obtain_synset_list'
+        synsets_list = [wnid.rstrip() for wnid in urlopen(all_synsets_url).readlines()[:-2]]
+        if thresh > 0:
+            synsets_list = filter(lambda x: self.synset_meta[x]['num_images'] >= thresh, synsets_list)
+        return synsets_list
+
+    def get_filename_dictionary(self, synset_list):
+        full_dict = get_full_filename_dictionary()
+        return {synset: full_dict[synset] for synset in synset_list}
+
+    def get_images(self, preproc=None):
+        """
+        Create a lazily reevaluated array with preprocessing specified by a preprocessing dictionary
+        preproc. See the documentation in ImgDownloaderCacherPreprocesser
+
+        """
+        if preproc is None:
+            preproc = self.default_preproc
+        file_names = [filename for filename in self.meta['filename']]
+        return larray.lmap(ImgDownloaderCacherPreprocessor(source=IMG_SOURCE, cache=self.cache, preproc=preproc),
+                           file_names)
 
 
 class cache():
@@ -314,21 +323,30 @@ def download_file_to_folder(filename, folder, source=IMG_SOURCE):
     os.system(command)
 
 
-class ImgDownloaderResizer(object):
+class ImgDownloaderCacherPreprocessor(object):
     """
     Class used to lazily downloading images to a cache, evaluating resizing/other pre-processing
     and loading image from file in an larray
     """
+    def __init__(self, source, cache, preproc):
+        """
+        :param source: string, adress passable to rsync where images are located
+        :param cache: a cache object with a path and set membership checking
+        :param preproc: A preprocessing spec. A preprocessing spec is a dictionary containing:
+            resize_to: Image is resized to the tuple given here (note: not reshaped)
+            dtype: The datatype of the image array
+            mode: 'RGB' or 'L' sepcifies whether or not to store color images
+            mask: Image object which is used to mask the image
+            crop: array of [minx, maxx, miny, maxy] crop box applied after resize
+            normalize: If true, then the image set to zero mean and unit standard deviation
 
-    def __init__(self,
-                 cache,
-                 source,
-                 resize_to=None,
-                 dtype='float32',
-                 normalize=True,
-                 crop=None,
-                 mask=None,
-                 mode='L'):
+        """
+        resize_to = preproc['resize_to']
+        crop = preproc['crop']
+        dtype = preproc['dtype']
+        mode = preproc['mode']
+        mask = preproc['mask']
+        normalize = preproc['normalize']
         assert len(resize_to) == 2, "Image size must be specified by 2 numbers"
         resize_to = tuple(resize_to)
         self.resize_to = resize_to
@@ -392,3 +410,66 @@ class ImgDownloaderResizer(object):
             rval /= 255.0
         assert rval.shape[:2] == self.resize_to
         return rval
+
+
+class Imagenet_synset_subset(Imagenet):
+
+    def __init__(self, synset_list, name, img_path=os.path.expanduser('~/.skdata/imagenet/images')):
+        """
+        :param synset_list: List of synsets to include in this subset
+        :param img_path: Path to image files
+        :param name: Unique name for this subset
+        """
+        self.synset_list = synset_list
+        self.name = name
+        Imagenet.__init__(self, img_path=img_path, meta_path=os.path.join(img_path, 'subset_meta'+name))
+
+    def get_synset_list(self, thresh=0):
+        """
+        thresh: int, minimum number of files to be included on the list
+        """
+        synsets_list = self.synset_list
+        if thresh > 0:
+            synsets_list = filter(lambda x: self.synset_meta[x]['num_images'] >= thresh, synsets_list)
+        return synsets_list
+
+
+class Imagenet_filename_subset(Imagenet_synset_subset):
+
+    def __init__(self, filenames, name, img_path=os.path.expanduser('~/.skdata/imagenet/imgs')):
+        self.filename_dict = defaultdict(list)
+        synset_list = []
+        for f in filenames:
+            synset = f.split('_')[0]
+            self.filename_dict[synset].append(f)
+            if synset not in synset_list:
+                synset_list.append(synset_list)
+
+        self._synset_list = [filename.split('_')[0] for filename in filenames]
+        synset_list = list(np.unique(np.array(self._synset_list)))
+        self.filenames = filenames
+        Imagenet_synset_subset.__init__(self, synset_list, name, img_path)
+
+    def get_filename_dictionary(self, synsets):
+        return {synset: self.filename_dict[synset] for synset in synsets}
+
+
+class HvM_Categories_Approximated_by_Synsets(Imagenet_filename_subset):
+    def __init__(self, img_path=os.path.expanduser('~/.skdata/imagenet/imgs')):
+        name = 'HvM_Categories_Approximated_by_Synsets'
+        full_dict = get_full_filename_dictionary()
+        self.translation_dict = \
+            {'Animals': 'n00015388',
+             'Boats': 'n02858304',
+             'Cars': 'n02958343',
+             'Chairs': 'n03001627',
+             'Faces': 'n09618957',
+             'Fruits': 'n13134947',
+             'Planes': 'n02691156',
+             'Tables': 'n04379243'}
+
+        synset_list = self.translation_dict.values()
+        #8000 might still be too many images, here I'm subsetting
+        # the synsets to get a size similar to one of the variation levels
+        filenames = itertools.chain.from_iterable(full_dict[synset][0:200] for synset in synset_list)
+        Imagenet_filename_subset.__init__(self, filenames, name, img_path)
