@@ -21,7 +21,7 @@ from collections import defaultdict
 import itertools
 
 
-main_dir = os.path.expanduser('~/skdata/imagenet')
+main_dir = os.path.expanduser('~/.skdata/imagenet')
 
 username = os.getlogin()
 IMG_SOURCE = username + '@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/imagenet'
@@ -149,7 +149,7 @@ def parent_child(synset_list):
 def get_full_filename_dictionary():
 #This is a (maybe _the_) key piece of metadata, so it is installed to a specific location locally
     filename = 'filenames_dict.p'
-    folder = '~/.skdata/imagenet'
+    folder = main_dir
     try:
         filenames_dict = cPickle.load(open(os.path.join(folder, filename), 'rb'))
     except IOError:
@@ -234,7 +234,7 @@ class Imagenet():
     @property
     def meta(self):
         if not hasattr(self, '_meta'):
-            self._synset_meta = self._get_meta()
+            self._meta = self._get_meta()
         return self._meta
 
     def _get_meta(self):
@@ -243,13 +243,16 @@ class Imagenet():
         try:
             tabular_load = tb.io.loadbinary(self.meta_path + 'meta.npz')
             # This seems like a flaw with tabular's loadbinary.
-            self._meta = tb.tabarray(records=tabular_load[0], dtype=tabular_load[1])
+            meta = tb.tabarray(records=tabular_load[0], dtype=tabular_load[1])
         except IOError:
             print 'Could not load meta from file, constructing'
-            filenames = itertools.chain.from_iterable([entry['filenames'] for entry in self.synset_meta])
+            s = self.synset_meta
+            filenames = list(itertools.chain.from_iterable(
+                             [s[synset]['filenames'] for synset in self.synset_meta.keys()]))
             synsets = [filename.split('_')[0] for filename in filenames]
             meta = tb.tabarray(records=zip(filenames, synsets), names=['filename', 'synset'])
-            tb.io.savebinary(self.meta_path + 'meta.npz', meta)
+            tb.io.savebinary(os.path.join(self.meta_path, 'meta.npz'), meta)
+        return meta
 
     @property
     def synset_meta(self):
@@ -273,8 +276,8 @@ class Imagenet():
                                           'definition': definitions[synset],
                                           'filenames': filenames[synset],
                                           'num_images': len(filenames[synset]),
-                                          'parents': tree_struct[synset]['parents'],
-                                          'children': tree_struct[synset]['children']}) for synset in synset_list])
+                                          'parents': tree_struct[synset].get('parents'),
+                                          'children': tree_struct[synset].get('children')}) for synset in synset_list])
             cPickle.dump(synset_meta, open(os.path.join(self.meta_path, 'synset_meta.p'), 'wb'))
         return synset_meta
 
@@ -456,14 +459,16 @@ class Imagenet_filename_subset(Imagenet_synset_subset):
             synset = f.split('_')[0]
             self.filename_dict[synset].append(f)
             if synset not in synset_list:
-                synset_list.append(synset_list)
+                synset_list.append(synset)
 
         self._synset_list = [filename.split('_')[0] for filename in filenames]
         synset_list = list(np.unique(np.array(self._synset_list)))
         self.filenames = filenames
         Imagenet_synset_subset.__init__(self, synset_list, name, img_path)
 
-    def get_filename_dictionary(self, synsets):
+    def get_filename_dictionary(self, synsets=None):
+        if synsets is None:
+            synsets = self.get_synset_list()
         return {synset: self.filename_dict[synset] for synset in synsets}
 
 
@@ -484,5 +489,6 @@ class HvM_Categories_Approximated_by_Synsets(Imagenet_filename_subset):
         synset_list = self.translation_dict.values()
         #8000 might still be too many images, here I'm subsetting
         # the synsets to get a size similar to one of the variation levels
-        filenames = itertools.chain.from_iterable(full_dict[synset][0:200] for synset in synset_list)
+        filenames = list(itertools.chain.from_iterable(full_dict[synset][0:200] for synset in synset_list))
+        self._old_filenames = list(itertools.chain.from_iterable(full_dict[synset][0:200] for synset in synset_list))
         Imagenet_filename_subset.__init__(self, filenames, name, img_path)
