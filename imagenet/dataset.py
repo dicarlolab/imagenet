@@ -48,11 +48,12 @@ def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonl
     for i, synset in enumerate(synsets):
         synset_names = []
         url = 'http://www.image-net.org/download/synset?' + \
-              'synset=' + str(synset) + \
+              'wnid=' + str(synset) + \
               '&username=' + username + \
               '&accesskey=' + accesskey + \
               '&release=latest'
         print i
+        print url
         url_file = urlopen(url)
         tar_file = tarfile.open(fileobj=url_file, mode='r|')
         if firstonly and not (num_per_synset == 'all'):
@@ -121,7 +122,7 @@ def get2013_Categories():
         for linkTag in linkTags:
             name_list.append(linkTag.string)
             link = linkTag['href']
-            synset_list.append(link.partition('synset=')[2])
+            synset_list.append(link.partition('=')[2])
         return synset_list
 
 
@@ -131,7 +132,7 @@ def parent_child(synset_list):
         Returns true if any synset is a descendant of any other
         synset_list: list of strings (synsets)
         """
-        urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?synset='
+        urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
         value = False  # innocent until proven guilty
         for synset in synset_list:
             children = [synset.rstrip().lstrip('-') for synset in urlopen(urlbase+synset).readlines()[1:]]
