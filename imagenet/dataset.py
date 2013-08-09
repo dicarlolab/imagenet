@@ -43,8 +43,8 @@ def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonl
     """
     if path is None:
         path = os.getcwd()
-    if not os.path.exists(path + '/'):
-        os.makedirs(path + '/')
+    if not os.path.exists(path):
+        os.makedirs(path)
     synsets = list(synsets)
     random.seed(seed)
     kept_names = []
@@ -154,22 +154,26 @@ def get_full_filename_dictionary():
         filenames_dict = cPickle.load(open(os.path.join(folder, filename), 'rb'))
     except IOError:
         print 'Filename dictionary not found, attempting to copy from IMG_SOURCE'
-# Run this code at IMG_SOURCE to build the dictionary.
-# os.listdir is very slow, so allow for about 24hr runtime.
-# from collections import defaultdict
-# import os
-# import cPickle
-# filenames_dict = defaultdict(list)
-# filenames = os.listdir(path)
-# imgs = [f in filenames if f.endswith('.JPEG')]
-# for f in filenames:
-#     synset = f.split('_')[0]
-#     im_id = f.split('_')[1].rstrip('.JPEG')
-#     filenames_dict[synset].append(f)
-# cPickle.dump(filenames_dict, open('filenames_dict.p', 'wb'))
         download_file_to_folder(filename, folder)
         filenames_dict = cPickle.load(open(os.path.join(folder, filename), 'rb'))
     return filenames_dict
+
+
+def save_filename_dict_from_img_folder(path=None):
+    """
+    Run this code at IMG_SOURCE to build the dictionary.
+    os.listdir is very slow, so allow for about 24hr runtime for large img folders
+    """
+    if path is None:
+        path = os.getcwd()
+    filenames_dict = defaultdict(list)
+    filenames = os.listdir(path)
+    imgs = [f for f in filenames if f.endswith('.JPEG')]
+    for f in imgs:
+        synset = f.split('_')[0]
+        # im_id = f.split('_')[1].rstrip('.JPEG')
+        filenames_dict[synset].append(f)
+    cPickle.dump(filenames_dict, open('filenames_dict.p', 'wb'))
 
 
 def get_word_dictionary():
@@ -217,7 +221,11 @@ class Imagenet():
     def __init__(self,
                  meta_path=os.path.expanduser('~/.skdata/imagenet/meta'),
                  img_path=default_image_path):
+        if not os.path.exists(img_path):
+            os.makedirs(img_path)
         self.img_path = img_path
+        if not os.path.exists(meta_path):
+            os.makedirs(meta_path)
         self.meta_path = meta_path
         self.cache = cache(img_path)
         self.default_preproc = {'resize_to': (256, 256), 'mode': 'L', 'dtype': 'float32',
@@ -324,7 +332,7 @@ class cache():
 
 
 def download_file_to_folder(filename, folder, source=IMG_SOURCE):
-    command = 'rsync -az ' + source + filename + ' ' + folder
+    command = 'rsync -az ' + os.path.join(source, filename) + ' ' + folder
     os.system(command)
 
 
