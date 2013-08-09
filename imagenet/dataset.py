@@ -23,12 +23,13 @@ import itertools
 
 main_dir = os.path.expanduser('~/skdata/imagenet')
 
-IMG_SOURCE = 'ardila@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/imagenet_download'
+username = os.getlogin()
+IMG_SOURCE = username + '@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/imagenet'
 
 #TODO : deal with username and accesskey so that we can share this code
 
 
-def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonly=False, path=os.getcwd(),
+def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonly=False, path=None,
                               username='ardila', accesskey='bd662acb4866553500f17babd5992810e0b5a439'):
     """
     Stores a random #num images for synsets specified by synsets from the latest release to path specified
@@ -39,6 +40,8 @@ def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonl
     If the argument firstonly is set to true, then download times can be reduced by only extracting the first
     few images
     """
+    if path is None:
+        path = os.getcwd()
     if not os.path.exists(path + '/'):
         os.makedirs(path + '/')
     synsets = list(synsets)
@@ -78,7 +81,7 @@ def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonl
     return meta
 
 
-def download_2013_ILSCRV_synsets(num_per_synset='all', seed=None, path=os.getcwd(), firstonly=False):
+def download_2013_ILSCRV_synsets(num_per_synset='all', seed=None, path=None, firstonly=False):
     """
     Stores a random #num images for the 2013 ILSCRV synsets from the latest release.
     Since files are stored as tar files online, the entire synset must be downloaded to access random images.
