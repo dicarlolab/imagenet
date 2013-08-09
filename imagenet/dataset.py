@@ -25,6 +25,7 @@ main_dir = os.path.expanduser('~/skdata/imagenet')
 
 username = os.getlogin()
 IMG_SOURCE = username + '@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/imagenet'
+default_image_path = os.path.join(main_dir, 'images')
 
 #TODO : deal with username and accesskey so that we can share this code
 
@@ -215,7 +216,7 @@ def get_tree_structure(synset_list):
 class Imagenet():
     def __init__(self,
                  meta_path=os.path.expanduser('~/.skdata/imagenet/meta'),
-                 img_path=os.path.expanduser('~/.skdata/imagenet/images')):
+                 img_path=default_image_path):
         self.img_path = img_path
         self.meta_path = meta_path
         self.cache = cache(img_path)
@@ -418,7 +419,7 @@ class ImgDownloaderCacherPreprocessor(object):
 
 class Imagenet_synset_subset(Imagenet):
 
-    def __init__(self, synset_list, name, img_path=os.path.expanduser('~/.skdata/imagenet/images')):
+    def __init__(self, synset_list, name, img_path=default_image_path):
         """
         :param synset_list: List of synsets to include in this subset
         :param img_path: Path to image files
@@ -440,7 +441,7 @@ class Imagenet_synset_subset(Imagenet):
 
 class Imagenet_filename_subset(Imagenet_synset_subset):
 
-    def __init__(self, filenames, name, img_path=os.path.expanduser('~/.skdata/imagenet/imgs')):
+    def __init__(self, filenames, name, img_path=default_image_path):
         self.filename_dict = defaultdict(list)
         synset_list = []
         for f in filenames:
@@ -459,7 +460,7 @@ class Imagenet_filename_subset(Imagenet_synset_subset):
 
 
 class HvM_Categories_Approximated_by_Synsets(Imagenet_filename_subset):
-    def __init__(self, img_path=os.path.expanduser('~/.skdata/imagenet/imgs')):
+    def __init__(self, img_path=default_image_path):
         name = 'HvM_Categories_Approximated_by_Synsets'
         full_dict = get_full_filename_dictionary()
         self.translation_dict = \
