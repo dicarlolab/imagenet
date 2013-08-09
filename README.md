@@ -61,7 +61,7 @@ And a dictionary containing a dictionary of information about each synset, each 
 ```
 synset_meta = dataset.synset_meta
 list_of_wordnet_ids = synset_meta.keys()
-info_about_first_synset = synset_meta[list_of_wordnet_ids].keys()
+info_about_first_synset = synset_meta[list_of_wordnet_ids[0]].keys()
 ```
 
 get_images() uses the dataset.default_preproc spec, which is a property of the dataset. we can change it for now, but I think in the future if we want to use different preprocs, we should extend the appropriate class and set its default_preproc property in the init method
