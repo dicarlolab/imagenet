@@ -27,6 +27,7 @@ username = os.getlogin()
 IMG_SOURCE = username + '@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/imagenet'
 default_image_path = os.path.join(main_dir, 'images')
 
+
 #TODO : deal with username and accesskey so that we can share this code
 
 
@@ -40,6 +41,8 @@ def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonl
 
     If the argument firstonly is set to true, then download times can be reduced by only extracting the first
     few images
+
+    Returns a meta tabarray object containing wnid and filename for each downloaded image
     """
     if path is None:
         path = os.getcwd()
@@ -217,7 +220,7 @@ def get_tree_structure(synset_list):
     return tree
 
 
-class Imagenet():
+class Imagenet(object):
     def __init__(self,
                  meta_path=os.path.expanduser('~/.skdata/imagenet/meta'),
                  img_path=default_image_path):
@@ -236,6 +239,10 @@ class Imagenet():
         if not hasattr(self, '_meta'):
             self._meta = self._get_meta()
         return self._meta
+
+    @property
+    def filenames(self):
+        return self.meta['filenames']
 
     def _get_meta(self):
         """Loads the synset meta from file, if it exists.
@@ -291,8 +298,10 @@ class Imagenet():
             synsets_list = filter(lambda x: self.synset_meta[x]['num_images'] >= thresh, synsets_list)
         return synsets_list
 
-    def get_filename_dictionary(self, synset_list):
+    def get_filename_dictionary(self, synset_list='all'):
         full_dict = get_full_filename_dictionary()
+        if synset_list == 'all':
+            synset_list = self.get_synset_list()
         return {synset: full_dict[synset] for synset in synset_list}
 
     def get_images(self, preproc=None):
@@ -307,6 +316,14 @@ class Imagenet():
         return larray.lmap(ImgDownloaderCacherPreprocessor(source=IMG_SOURCE, cache=self.cache, preproc=preproc),
                            file_names)
 
+    def get_pixel_features(self, preproc=None):
+        if preproc is None:
+            preproc = self.default_preproc
+        preproc['flatten'] = True
+        file_names = [filename for filename in self.meta['filename']]
+        return larray.lmap(ImgDownloaderCacherPreprocessor(source=IMG_SOURCE, cache=self.cache, preproc=preproc),
+                           file_names)
+
 
 class cache():
     def __init__(self, path, cache_set=None):
@@ -315,7 +332,7 @@ class cache():
             try:
                 self.set = cPickle.load(open(os.path.join(path, 'cached_set.p'), 'rb'))
             except IOError:
-                self.set = set([filename for filename in os.listdir(path) if fnmatch.fnmatch(filename, '*.jpg')])
+                self.set = set([filename for filename in os.listdir(path) if fnmatch.fnmatch(filename, '*.JPEG')])
 
     def save(self):
         cPickle.dump(self.set, open(os.path.join(self.path, 'cached_set.p'), 'wb'))
@@ -363,6 +380,7 @@ class ImgDownloaderCacherPreprocessor(object):
         mode = preproc['mode']
         mask = preproc['mask']
         normalize = preproc['normalize']
+        self.flatten = preproc.get('flatten')
         assert len(resize_to) == 2, "Image size must be specified by 2 numbers"
         resize_to = tuple(resize_to)
         self.resize_to = resize_to
@@ -376,6 +394,9 @@ class ImgDownloaderCacherPreprocessor(object):
         self._crop = crop
         assert dtype == 'float32', "Only float 32 is supported"
         self.dtype = dtype
+        if self.flatten:
+            self._ndim = 2
+            self._shape = tuple([(r-l) * (b-t)])
         if mode == 'L':
             self._ndim = 3
             self.shape = tuple([r - l, b - t])
@@ -425,6 +446,8 @@ class ImgDownloaderCacherPreprocessor(object):
         else:
             rval /= 255.0
         assert rval.shape[:2] == self.resize_to
+        if self.flatten:
+            rval = rval.flatten()
         return rval
 
 
@@ -438,7 +461,8 @@ class Imagenet_synset_subset(Imagenet):
         """
         self.synset_list = synset_list
         self.name = name
-        Imagenet.__init__(self, img_path=img_path, meta_path=os.path.join(img_path, 'subset_meta'+name))
+        super(Imagenet_synset_subset, self).__init__(img_path=img_path,
+                                                     meta_path=os.path.join(img_path, 'subset_meta'+name))
 
     def get_synset_list(self, thresh=0):
         """
@@ -463,8 +487,7 @@ class Imagenet_filename_subset(Imagenet_synset_subset):
 
         self._synset_list = [filename.split('_')[0] for filename in filenames]
         synset_list = list(np.unique(np.array(self._synset_list)))
-        self.filenames = filenames
-        Imagenet_synset_subset.__init__(self, synset_list, name, img_path)
+        super(Imagenet_filename_subset, self).__init__(synset_list, name, img_path)
 
     def get_filename_dictionary(self, synsets=None):
         if synsets is None:
