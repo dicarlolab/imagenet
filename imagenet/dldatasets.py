@@ -26,19 +26,23 @@ class HvM_Categories(Imagenet_filename_subset):
         self._old_filenames = list(itertools.chain.from_iterable(full_dict[synset][0:200] for synset in synset_list))
         super(HvM_Categories, self).__init__(filenames, name, img_path)
 
+    def memmap_pixel_features(self):
+        import os.path as path
+        filename = path.join(self.img_path, 'HvM.dat')
+        return np.memmap(filename, 'float32', 'w+')
 
-#this is the dataset we used in our initial model screen
-class Model_Screen_1(Imagenet_filename_subset):
-    def __init__(self, img_path=default_image_path):
-        random.seed('Model_Screen_1')
+
+#this is the dataset we used in pixel screening
+class Challenge_synsets_100_random(Imagenet_filename_subset):
+    def __init__(self, img_path=default_image_path, meta_path=default_meta_path):
+        name = 'challenge_synsets_100_random'
+        random.seed(name)
         synsets = get2013_Categories()
-        num_per_synset = 250
-        name = 'Model_Screen_1'
+        num_per_synset = 200
         full_dict = get_full_filename_dictionary()
         filenames = []
         map(filenames.extend, [random.sample(full_dict[synset], num_per_synset) for synset in synsets])
-        super(Model_Screen_1, self).__init__(filenames, name, img_path)
-
+        super(Challenge_synsets_100_random, self).__init__(filenames, name, img_path, meta_path)
 
 
 

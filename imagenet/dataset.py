@@ -27,6 +27,7 @@ main_dir = os.path.expanduser('~/.skdata/imagenet')
 username = os.getlogin()
 IMG_SOURCE = username + '@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/imagenet'
 default_image_path = os.path.join(main_dir, 'images')
+default_meta_path = os.path.join(main_dir, 'meta')
 
 
 #TODO : deal with username and accesskey so that we can share this code
@@ -197,18 +198,18 @@ def get_definition_dictionary():
 
 
 def get_tree_structure(synset_list):
-    filename = 'filenames_dict.p'
-    folder = '~/.skdata/imagenet'
+    filename = 'full_tree_structure.p'
+    folder = main_dir
     try:
         full_tree_structure = cPickle.load(open(os.path.join(folder, filename), 'rb'))
         tree = {synset: full_tree_structure[synset] for synset in synset_list}
     except IOError:
+        print "Calculating full tree structure using api"
         urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
         tree = defaultdict(dict)
         # multiple_parents = []
         for i, synset in enumerate(synset_list):
             if i % 100 == 0:
-                print "Calculating tree structure using api"
                 print float(i)/len(synset_list)
             children = [wnid.rstrip().lstrip('-') for wnid in urlopen(urlbase+synset).readlines()[1:]]
             tree[synset]['children'] = children
@@ -218,13 +219,14 @@ def get_tree_structure(synset_list):
                     # multiple_parents.append(child)
                 else:
                     tree[child]['parents'] = [synset]
+        cPickle.dump(tree, open(os.path.join(folder, filename), 'wb'))
         print 'done'
     return tree
 
 
 class Imagenet(object):
     def __init__(self,
-                 meta_path=os.path.expanduser('~/.skdata/imagenet/meta'),
+                 meta_path=default_meta_path,
                  img_path=default_image_path):
         if not os.path.exists(img_path):
             os.makedirs(img_path)
@@ -233,7 +235,7 @@ class Imagenet(object):
             os.makedirs(meta_path)
         self.meta_path = meta_path
         self.cache = cache(img_path)
-        self.default_preproc = {'resize_to': (256, 256), 'mode': 'L', 'dtype': 'float32',
+        self.default_preproc = {'resize_to': (256, 256), 'mode': 'RGB', 'dtype': 'float32',
                                 'crop': None, 'mask': None, 'normalize': True}
 
     @property
@@ -244,7 +246,7 @@ class Imagenet(object):
 
     @property
     def filenames(self):
-        return self.meta['filenames']
+        return self.meta['filename']
 
     def _get_meta(self):
         """Loads the synset meta from file, if it exists.
@@ -306,14 +308,12 @@ class Imagenet(object):
             synset_list = self.get_synset_list()
         return {synset: full_dict[synset] for synset in synset_list}
 
-    def get_images(self, preproc=None):
+    def get_images(self, preproc):
         """
         Create a lazily reevaluated array with preprocessing specified by a preprocessing dictionary
         preproc. See the documentation in ImgDownloaderCacherPreprocesser
 
         """
-        if preproc is None:
-            preproc = self.default_preproc
         file_names = self.meta['filename']
         processor = ImgDownloaderCacherPreprocessor(source=IMG_SOURCE, cache=self.cache, preproc=preproc)
         return larray.lmap(processor,
@@ -321,8 +321,6 @@ class Imagenet(object):
                            f_map=processor)
 
     def get_pixel_features(self, preproc=None):
-        if preproc is None:
-            preproc = self.default_preproc
         preproc['flatten'] = True
         return self.get_images(preproc)
 
@@ -347,8 +345,9 @@ class cache():
         :return: full path
         """
         if filename not in self.set:
+            print 'downloading file ' + str(filename)
             download_file_to_folder(filename, self.path, source)
-            self.set.update(filename)
+            self.set.add(filename)
             self.save()
         return os.path.join(self.path, filename)
 
@@ -385,13 +384,16 @@ class ImgDownloaderCacherPreprocessor(dataset_templates.ImageLoaderPreprocesser)
         :param file_names: file_names to download and preprocess
         :return: image
         """
+        if isinstance(file_names, str):
+            file_names = [file_names]
+
         file_paths = [self.cache.download(file_name, self.source) for file_name in file_names]
         return np.asarray(map(self.load_and_process, np.asarray(file_paths)))
 
 
 class Imagenet_synset_subset(Imagenet):
 
-    def __init__(self, synset_list, name, img_path=default_image_path):
+    def __init__(self, synset_list, name, img_path=default_image_path, meta_path=default_meta_path):
         """
         :param synset_list: List of synsets to include in this subset
         :param img_path: Path to image files
@@ -400,7 +402,7 @@ class Imagenet_synset_subset(Imagenet):
         self.synset_list = synset_list
         self.name = name
         super(Imagenet_synset_subset, self).__init__(img_path=img_path,
-                                                     meta_path=os.path.join(img_path, 'subset_'+name))
+                                                     meta_path=meta_path)
 
     def get_synset_list(self, thresh=0):
         """
@@ -414,7 +416,7 @@ class Imagenet_synset_subset(Imagenet):
 
 class Imagenet_filename_subset(Imagenet_synset_subset):
 
-    def __init__(self, filenames, name, img_path=default_image_path):
+    def __init__(self, filenames, name, img_path=default_image_path, meta_path=default_meta_path):
         self.filename_dict = defaultdict(list)
         synset_list = []
         for f in filenames:
