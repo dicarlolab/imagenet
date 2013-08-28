@@ -25,7 +25,7 @@ from dldata import dataset_templates
 main_dir = os.path.expanduser('~/.skdata/imagenet')
 
 username = os.getlogin()
-IMG_SOURCE = username + '@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/imagenet'
+IMG_SOURCE = username + '@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/.skdata/imagenet/images'
 default_image_path = os.path.join(main_dir, 'images')
 default_meta_path = os.path.join(main_dir, 'meta')
 

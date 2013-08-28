@@ -33,16 +33,18 @@ class HvM_Categories(Imagenet_filename_subset):
 
 
 #this is the dataset we used in pixel screening
-class Challenge_synsets_100_random(Imagenet_filename_subset):
+class Challenge_Synsets_100_Random(Imagenet_filename_subset):
     def __init__(self, img_path=default_image_path, meta_path=default_meta_path):
         name = 'challenge_synsets_100_random'
         random.seed(name)
-        synsets = get2013_Categories()
+        synsets = random.sample(get2013_Categories(), 100)
         num_per_synset = 200
         full_dict = get_full_filename_dictionary()
         filenames = []
-        map(filenames.extend, [random.sample(full_dict[synset], num_per_synset) for synset in synsets])
-        super(Challenge_synsets_100_random, self).__init__(filenames, name, img_path, meta_path)
+        for synset in synsets:
+            print synset
+            filenames.extend(random.sample(full_dict[synset], num_per_synset))
+        super(Challenge_Synsets_100_Random, self).__init__(filenames, name, img_path, meta_path)
 
 
 
