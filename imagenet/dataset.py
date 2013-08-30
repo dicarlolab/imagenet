@@ -20,7 +20,7 @@ import fnmatch
 from collections import defaultdict
 import itertools
 from dldata import dataset_templates
-
+from joblib import Parallel, delayed
 
 main_dir = os.path.expanduser('~/.skdata/imagenet')
 
@@ -377,6 +377,7 @@ class ImgDownloaderCacherPreprocessor(dataset_templates.ImageLoaderPreprocesser)
         """
         self.cache = cache
         self.source = source
+        self.preproc = preproc
         super(ImgDownloaderCacherPreprocessor, self).__init__(preproc)
 
     def __call__(self, file_names):
@@ -388,7 +389,14 @@ class ImgDownloaderCacherPreprocessor(dataset_templates.ImageLoaderPreprocesser)
             file_names = [file_names]
 
         file_paths = [self.cache.download(file_name, self.source) for file_name in file_names]
-        return np.asarray(map(self.load_and_process, np.asarray(file_paths)))
+        results = Parallel(n_jobs=-1)(delayed(load_and_process)(file_path, self.preproc) for file_path in file_paths)
+        return np.asarray(results)
+        # return np.asarray(map(self.load_and_process, np.asarray(file_paths)))
+
+
+def load_and_process(file_path, preproc):
+    processer = dataset_templates.ImageLoaderPreprocesser(preproc)
+    return processer(str(file_path))
 
 
 class Imagenet_synset_subset(Imagenet):

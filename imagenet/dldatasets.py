@@ -42,7 +42,6 @@ class Challenge_Synsets_100_Random(Imagenet_filename_subset):
         full_dict = get_full_filename_dictionary()
         filenames = []
         for synset in synsets:
-            print synset
             filenames.extend(random.sample(full_dict[synset], num_per_synset))
         super(Challenge_Synsets_100_Random, self).__init__(filenames, name, img_path, meta_path)
 
