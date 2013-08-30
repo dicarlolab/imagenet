@@ -424,7 +424,7 @@ class Imagenet_synset_subset(Imagenet):
 
 class Imagenet_filename_subset(Imagenet_synset_subset):
 
-    def __init__(self, filenames, name, img_path=default_image_path, meta_path=default_meta_path):
+    def __init__(self, filenames, name, img_path=default_image_path, meta_path=None):
         self.filename_dict = defaultdict(list)
         synset_list = []
         for f in filenames:
@@ -435,7 +435,7 @@ class Imagenet_filename_subset(Imagenet_synset_subset):
 
         self._synset_list = [filename.split('_')[0] for filename in filenames]
         synset_list = list(np.unique(np.array(self._synset_list)))
-        super(Imagenet_filename_subset, self).__init__(synset_list, name, img_path)
+        super(Imagenet_filename_subset, self).__init__(synset_list, name, img_path, meta_path)
 
     def get_filename_dictionary(self, synsets=None):
         if synsets is None:
