@@ -40,7 +40,7 @@ Import the dataset and call its constructor
 
 
 ```
-import imagenet.dataset as d
+import imagenet.dldatasets as d
 dataset = d.HvM_Categories_Approximated_by_Synsets()
 ```
 
