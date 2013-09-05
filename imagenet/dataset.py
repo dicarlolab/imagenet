@@ -227,7 +227,9 @@ def get_tree_structure(synset_list):
 class Imagenet(object):
     def __init__(self,
                  meta_path=default_meta_path,
-                 img_path=default_image_path):
+                 img_path=None):
+        if img_path is None:
+            img_path = default_img_path
         if not os.path.exists(img_path):
             os.makedirs(img_path)
         self.img_path = img_path
@@ -401,12 +403,14 @@ def load_and_process(file_path, preproc):
 
 class Imagenet_synset_subset(Imagenet):
 
-    def __init__(self, synset_list, name, img_path=default_image_path, meta_path=default_meta_path):
+    def __init__(self, synset_list, name, img_path=None, meta_path=None):
         """
         :param synset_list: List of synsets to include in this subset
         :param img_path: Path to image files
         :param name: Unique name for this subset
         """
+        if meta_path is None:
+            meta_path = os.path.join(default_meta_path, name)
         self.synset_list = synset_list
         self.name = name
         super(Imagenet_synset_subset, self).__init__(img_path=img_path,

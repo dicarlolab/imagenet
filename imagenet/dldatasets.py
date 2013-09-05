@@ -49,7 +49,29 @@ class Challenge_Synsets_100_Random(Imagenet_filename_subset):
         super(Challenge_Synsets_100_Random, self).__init__(filenames, name, img_path, meta_path)
 
 
-
+class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
+    def __init__(self, img_path=None, meta_path=None):
+        name = 'challenge_synsets_20_pixel_hard'
+        synsets = ['n03633091',
+             'n03666591',
+              'n03196217',
+               'n02097474',
+                'n02096177',
+                 'n04507155',
+                  'n03804744',
+                   'n03259280',
+                    'n02102318',
+                     'n02795169',
+                      'n03424325',
+                       'n02236044',
+                        'n02093428',
+                         'n03950228',
+                          'n04265275',
+                           'n04599235',
+                            'n04153751',
+                             'n02109047',
+                              'n04200800']
+        super(Challenge_Synsets_20_Pixel_Hard, self).__init__(synsets, name, img_path, meta_path)
 # import tarfile
 # import os
 # f = open(os.path.expanduser('~/output.txt')).readlines()
