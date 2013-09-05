@@ -229,7 +229,7 @@ class Imagenet(object):
                  meta_path=default_meta_path,
                  img_path=None):
         if img_path is None:
-            img_path = default_img_path
+            img_path = default_image_path
         if not os.path.exists(img_path):
             os.makedirs(img_path)
         self.img_path = img_path
