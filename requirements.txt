@@ -1,5 +1,3 @@
 numpy>=1.7.0
 scipy
--e git+http://github.com/yamins81/tabular.git#egg=tabular
-PIL
-skdata
+-e git+http://github.com/dicarlolab/dldata.git@refactor#egg=dldata
