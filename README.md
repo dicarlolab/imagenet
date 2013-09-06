@@ -4,17 +4,14 @@ imagenet
 A python module containing both a full
 imagenet dataset object conforming to skdata standards, and various related subsets.
 
-
-For now, installing requires you have
-
-This folder:
-~/.skdata
+This folder will be created when using datasets:
+~/.skdata/imagenet/images
 
 Which is where the images will be cached locally
 
 Under the hood, this initial version uses rsync to download files from a folder on mh17
 
-This means you must configure your username to have passwordless ssh into mh17 for downloading images to work
+This means _you must configure your username to have passwordless ssh into mh17_ for downloading images to work
 
 Eventually this will be updated to use MongoDB on dicarloX
 
@@ -41,14 +38,9 @@ Import the dataset and call its constructor
 
 ```
 import imagenet.dldatasets as d
-dataset = d.HvM_Categories_Approximated_by_Synsets()
+dataset = d.Challenge_Synsets_20_Pixel_Hard()
 ```
 
-Dictionary showing the mapping between hvm categories and synsets that I used
-
-```
-translation_dictionary = dataset.translation_dict
-```
 
 The dataset has a meta tabular array object
 
