@@ -397,7 +397,10 @@ class ImgDownloaderCacherPreprocessor(dataset_templates.ImageLoaderPreprocesser)
 
         file_paths = [self.cache.download(file_name, self.source) for file_name in file_names]
         results = Parallel(n_jobs=-1)(delayed(load_and_process)(file_path, self.preproc) for file_path in file_paths)
-        return np.asarray(results)
+        if len(file_names) > 1:
+            return np.asarray(results)
+        else:
+            return np.asarray(results)[0]
         # return np.asarray(map(self.load_and_process, np.asarray(file_paths)))
 
 
