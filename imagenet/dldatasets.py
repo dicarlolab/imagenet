@@ -74,6 +74,8 @@ class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
              'n04599235',
              'n04153751']
         super(Challenge_Synsets_20_Pixel_Hard, self).__init__(synsets, name, img_path, meta_path)
+
+
 # import tarfile
 # import os
 # f = open(os.path.expanduser('~/output.txt')).readlines()
