@@ -4,24 +4,29 @@ and contain relevant references to academic literature.
 Logic for downloading the data set from the most official internet distribution location possible.
 Logic for unpacking and loading that data set into primitive Python data types, if possible."""
 
-from bs4 import BeautifulSoup
-from random import sample
 import os
-from urllib2 import urlopen
-import numpy as np
+import fnmatch
 import random
 import tarfile
-import tabular as tb
-import Image
-import ImageOps
-import skdata.larray as larray
 import cPickle
-import fnmatch
-from collections import defaultdict
 import itertools
+import pwd
+from urllib2 import urlopen
+from collections import defaultdict
+
+import numpy as np
+import tabular as tb
+import skdata.larray as larray
+from PIL import (Image,
+                 ImageOps)
+from bs4 import BeautifulSoup
+from random import sample
+
 from dldata import dataset_templates
 from joblib import Parallel, delayed
-import pwd
+
+
+
 
 main_dir = os.path.expanduser('~/.skdata/imagenet')
 username = pwd.getpwuid(os.getuid())[0]
