@@ -5,6 +5,7 @@ Logic for downloading the data set from the most official internet distribution 
 Logic for unpacking and loading that data set into primitive Python data types, if possible."""
 
 import os
+import hashlib
 import fnmatch
 import random
 import tarfile
@@ -17,6 +18,7 @@ from collections import defaultdict
 import numpy as np
 import tabular as tb
 import skdata.larray as larray
+from skdata.data_home import get_data_home
 from PIL import (Image,
                  ImageOps)
 from bs4 import BeautifulSoup
@@ -26,20 +28,24 @@ from dldata import dataset_templates
 from joblib import Parallel, delayed
 
 
-
-
-main_dir = os.path.expanduser('~/.skdata/imagenet')
-username = pwd.getpwuid(os.getuid())[0]
-IMG_SOURCE = username + '@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/.skdata/imagenet/images'
-default_image_path = os.path.join(main_dir, 'images')
-default_meta_path = os.path.join(main_dir, 'meta')
+def get_id(l):
+    return hashlib.sha1(repr(l)).hexdigest()
 
 
 #TODO : deal with username and accesskey so that we can share this code
 
+def get_img_source():
+    env = os.environ
+    if 'imagenet_mh17_username' in env:
+        username  = env['imagenet_mh17_username']
+    else:
+        username = pwd.getpwuid(os.getuid())[0]
+    img_source = username + '@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/.skdata/imagenet/images'
 
+    return img_source
+    
 def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonly=False, path=None,
-                              username='ardila', accesskey='bd662acb4866553500f17babd5992810e0b5a439'):
+                              imagenet_username='ardila', accesskey='bd662acb4866553500f17babd5992810e0b5a439'):
     """
     Stores a random #num images for synsets specified by synsets from the latest release to path specified
     Since files are stored as tar files online, the entire synset must be downloaded to access random images.
@@ -63,7 +69,7 @@ def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonl
         synset_names = []
         url = 'http://www.image-net.org/download/synset?' + \
               'wnid=' + str(synset) + \
-              '&username=' + username + \
+              '&username=' + imagenet_username + \
               '&accesskey=' + accesskey + \
               '&release=latest'
         print i
@@ -156,19 +162,6 @@ def parent_child(synset_list):
         return value
 
 
-def get_full_filename_dictionary():
-#This is a (maybe _the_) key piece of metadata, so it is installed to a specific location locally
-    filename = 'filenames_dict.p'
-    folder = main_dir
-    try:
-        filenames_dict = cPickle.load(open(os.path.join(folder, filename), 'rb'))
-    except IOError:
-        print 'Filename dictionary not found, attempting to copy from IMG_SOURCE'
-        download_file_to_folder(filename, folder)
-        filenames_dict = cPickle.load(open(os.path.join(folder, filename), 'rb'))
-    return filenames_dict
-
-
 def save_filename_dict_from_img_folder(path=None):
     """
     Run this code at IMG_SOURCE to build the dictionary.
@@ -202,48 +195,33 @@ def get_definition_dictionary():
     return definition_dictionary
 
 
-def get_tree_structure(synset_list):
-    filename = 'full_tree_structure.p'
-    folder = main_dir
-    try:
-        full_tree_structure = cPickle.load(open(os.path.join(folder, filename), 'rb'))
-        tree = {synset: full_tree_structure[synset] for synset in synset_list}
-    except IOError:
-        print "Calculating full tree structure using api"
-        urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
-        tree = defaultdict(dict)
-        # multiple_parents = []
-        for i, synset in enumerate(synset_list):
-            if i % 100 == 0:
-                print float(i)/len(synset_list)
-            children = [wnid.rstrip().lstrip('-') for wnid in urlopen(urlbase+synset).readlines()[1:]]
-            tree[synset]['children'] = children
-            for child in children:
-                if tree[child].get('parents') is not None:
-                    tree[child]['parents'].append(synset)
-                    # multiple_parents.append(child)
-                else:
-                    tree[child]['parents'] = [synset]
-        cPickle.dump(tree, open(os.path.join(folder, filename), 'wb'))
-        print 'done'
-    return tree
-
-
 class Imagenet(object):
-    def __init__(self,
-                 meta_path=default_meta_path,
-                 img_path=None):
-        if img_path is None:
-            img_path = default_image_path
+     
+    def __init__(self, data=None):
+    
+        self.data = data
+        self.specific_name = self.__class__.__name__ + '_' + get_id(data)   
+        
+        img_path = self.imagenet_home('images')
         if not os.path.exists(img_path):
             os.makedirs(img_path)
         self.img_path = img_path
-        if not os.path.exists(meta_path):
-            os.makedirs(meta_path)
-        self.meta_path = meta_path
+        
+        self.meta_path = self.local_home('meta')
+        if not os.path.exists(self.meta_path):
+            os.makedirs(self.meta_path)
+            
         self.cache = cache(img_path)
+        
         self.default_preproc = {'resize_to': (256, 256), 'mode': 'RGB', 'dtype': 'float32',
                                 'crop': None, 'mask': None, 'normalize': True}
+                                
+   
+    def imagenet_home(self, *suffix_paths):
+        return os.path.join(get_data_home(), 'imagenet', *suffix_paths)                                
+
+    def local_home(self, *suffix_paths):
+        return os.path.join(get_data_home(), self.specific_name, *suffix_paths)                           
 
     @property
     def meta(self):
@@ -278,6 +256,33 @@ class Imagenet(object):
             self._synset_meta = self._get_synset_meta()
         return self._synset_meta
 
+    def get_tree_structure(self, synset_list):
+        filename = 'full_tree_structure.p'
+        folder = self.imagenet_home()
+        try:
+            full_tree_structure = cPickle.load(open(os.path.join(folder, filename), 'rb'))
+            tree = {synset: full_tree_structure[synset] for synset in synset_list}
+        except IOError:
+            print "Calculating full tree structure using api"
+            urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
+            tree = defaultdict(dict)
+            # multiple_parents = []
+            for i, synset in enumerate(synset_list):
+                if i % 100 == 0:
+                    print float(i)/len(synset_list)
+                children = [wnid.rstrip().lstrip('-') for wnid in urlopen(urlbase+synset).readlines()[1:]]
+                tree[synset]['children'] = children
+                for child in children:
+                    if tree[child].get('parents') is not None:
+                        tree[child]['parents'].append(synset)
+                        # multiple_parents.append(child)
+                    else:
+                        tree[child]['parents'] = [synset]
+            cPickle.dump(tree, open(os.path.join(folder, filename), 'wb'))
+            print 'done'
+        return tree
+
+
     def _get_synset_meta(self):
         """Loads the synset meta from file, if it exists.
         If it doesn't exist, calls _get_synset_meta"""
@@ -289,7 +294,7 @@ class Imagenet(object):
             words = get_word_dictionary()
             definitions = get_definition_dictionary()
             filenames = self.get_filename_dictionary(synset_list)
-            tree_struct = get_tree_structure(synset_list)
+            tree_struct = self.get_tree_structure(synset_list)
             synset_meta = dict([(synset, {'words': words[synset],
                                           'definition': definitions[synset],
                                           'filenames': filenames[synset],
@@ -309,8 +314,20 @@ class Imagenet(object):
             synsets_list = filter(lambda x: self.synset_meta[x]['num_images'] >= thresh, synsets_list)
         return synsets_list
 
+    def get_full_filename_dictionary(self):
+    #This is a (maybe _the_) key piece of metadata, so it is installed to a specific location locally
+        filename = 'filenames_dict.p'
+        folder = self.imagenet_home()
+        try:
+            filenames_dict = cPickle.load(open(os.path.join(folder, filename), 'rb'))
+        except IOError:
+            print 'Filename dictionary not found, attempting to copy from IMG_SOURCE'
+            download_file_to_folder(filename, folder)
+            filenames_dict = cPickle.load(open(os.path.join(folder, filename), 'rb'))
+        return filenames_dict
+
     def get_filename_dictionary(self, synset_list='all'):
-        full_dict = get_full_filename_dictionary()
+        full_dict = self.get_full_filename_dictionary()
         if synset_list == 'all':
             synset_list = self.get_synset_list()
         return {synset: full_dict[synset] for synset in synset_list}
@@ -322,7 +339,8 @@ class Imagenet(object):
 
         """
         file_names = self.meta['filename']
-        processor = ImgDownloaderCacherPreprocessor(source=IMG_SOURCE, cache=self.cache, preproc=preproc)
+        img_source = get_img_source()
+        processor = ImgDownloaderCacherPreprocessor(source=img_source, cache=self.cache, preproc=preproc)
         return larray.lmap(processor,
                            file_names,
                            f_map=processor)
@@ -359,7 +377,7 @@ class cache():
         return os.path.join(self.path, filename)
 
 
-def download_file_to_folder(filename, folder, source=IMG_SOURCE):
+def download_file_to_folder(filename, folder, source=get_img_source()):
     command = 'rsync -az ' + os.path.join(source, filename) + ' ' + folder
     os.system(command)
 
@@ -410,25 +428,21 @@ def load_and_process(file_path, preproc):
 
 
 class Imagenet_synset_subset(Imagenet):
+    """
+    :param synset_list: List of synsets to include in this subset
+    :param img_path: Path to image files
+    :param name: Unique name for this subset
+    """   
 
-    def __init__(self, synset_list, name, img_path=None, meta_path=None):
-        """
-        :param synset_list: List of synsets to include in this subset
-        :param img_path: Path to image files
-        :param name: Unique name for this subset
-        """
-        if meta_path is None:
-            meta_path = os.path.join(default_meta_path, name)
-        self.synset_list = synset_list
-        self.name = name
-        super(Imagenet_synset_subset, self).__init__(img_path=img_path,
-                                                     meta_path=meta_path)
+    def __init__(self, data):
+        self.synset_list = data['synset_list']
+        super(Imagenet_synset_subset, self).__init__(data=data)
 
     def get_synset_list(self, thresh=0):
         """
         thresh: int, minimum number of files to be included on the list
         """
-        synsets_list = self.synset_list
+        synsets_list = self.data['synset_list']
         if thresh > 0:
             synsets_list = filter(lambda x: self.synset_meta[x]['num_images'] >= thresh, synsets_list)
         return synsets_list
@@ -436,18 +450,19 @@ class Imagenet_synset_subset(Imagenet):
 
 class Imagenet_filename_subset(Imagenet_synset_subset):
 
-    def __init__(self, filenames, name, img_path=default_image_path, meta_path=None):
+    def __init__(self, data):
         self.filename_dict = defaultdict(list)
         synset_list = []
+        filenames = data['filenames']
         for f in filenames:
             synset = f.split('_')[0]
             self.filename_dict[synset].append(f)
             if synset not in synset_list:
                 synset_list.append(synset)
 
-        self._synset_list = [filename.split('_')[0] for filename in filenames]
-        synset_list = list(np.unique(np.array(self._synset_list)))
-        super(Imagenet_filename_subset, self).__init__(synset_list, name, img_path, meta_path)
+        _synset_list = [filename.split('_')[0] for filename in filenames]
+        data['synset_list'] = list(np.unique(np.array(_synset_list)))
+        super(Imagenet_filename_subset, self).__init__(data=data)
 
     def get_filename_dictionary(self, synsets=None):
         if synsets is None:

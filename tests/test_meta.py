@@ -9,7 +9,7 @@ import imagenet.dldatasets as dldatasets
 
 
 def smoke_test():
-    dataset = dldatasets.HvM_Categories_Approximated_by_Synsets()
+    dataset = dldatasets.HvM_Categories()
     print dataset.meta[0]
     
     
