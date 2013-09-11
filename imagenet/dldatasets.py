@@ -76,6 +76,15 @@ class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
         super(Challenge_Synsets_20_Pixel_Hard, self).__init__(data=data)
 
 
+class Challenge_Synsets_2_Pixel_Hard(Imagenet_synset_subset):
+    def __init__(self):
+        synsets =   \
+            ['n03196217',
+             'n02236044']
+        data = {'synset_list': synsets}
+        super(Challenge_Synsets_2_Pixel_Hard, self).__init__(data=data)
+
+
 # import tarfile
 # import os
 # f = open(os.path.expanduser('~/output.txt')).readlines()
