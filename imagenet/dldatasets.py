@@ -1,7 +1,10 @@
 import itertools
-
+import random
+import numpy as np
 from dataset import (Imagenet_filename_subset, 
-                     Imagenet_synset_subset)
+                     Imagenet_synset_subset,
+                     get2013_Categories,
+                     Imagenet)
 
 
 class HvM_Categories(Imagenet_filename_subset):
@@ -41,7 +44,7 @@ class Challenge_Synsets_100_Random(Imagenet_filename_subset):
         random.seed('Challenge_Synsets_100_Random')
         synsets = random.sample(get2013_Categories(), 100)
         num_per_synset = 200
-        full_dict = get_full_filename_dictionary()
+        full_dict = self.get_full_filename_dictionary()
         filenames = []
         for synset in synsets:
             filenames.extend(random.sample(full_dict[synset], num_per_synset))
@@ -84,6 +87,19 @@ class Challenge_Synsets_2_Pixel_Hard(Imagenet_synset_subset):
         data = {'synset_list': synsets}
         super(Challenge_Synsets_2_Pixel_Hard, self).__init__(data=data)
 
+
+class Big_Pixel_Screen(Imagenet_filename_subset):
+    def __init__(self):
+        random.seed('Big_Pixel_Screen')
+        big_synsets = Imagenet().get_synset_list(thresh=1000)
+        screen_synsets = list(set(get2013_Categories()) | big_synsets)
+        filename_dict = self.get_full_filename_dictionary()
+        filenames = []
+        num_per_synset = 200
+        for synset in screen_synsets:
+            filenames.extend(random.sample(filename_dict[synset], num_per_synset))
+        data = {'filenames': filenames}
+        super(Big_Pixel_Screen, self).__init__(data=data)
 
 # import tarfile
 # import os
