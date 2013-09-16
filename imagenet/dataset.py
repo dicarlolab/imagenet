@@ -26,6 +26,8 @@ from random import sample
 
 from dldata import dataset_templates
 from joblib import Parallel, delayed
+import pymongo as pm
+import gridfs
 
 
 def get_id(l):
@@ -35,15 +37,11 @@ def get_id(l):
 #TODO : deal with username and accesskey so that we can share this code
 
 def get_img_source():
-    env = os.environ
-    if 'imagenet_mh17_username' in env:
-        username  = env['imagenet_mh17_username']
-    else:
-        username = pwd.getpwuid(os.getuid())[0]
-    img_source = username + '@mh17.mit.edu:/mindhive/dicarlolab/u/ardila/.skdata/imagenet/images'
+    db = pm.MongoClient('dicarlo5').gridfs_example
+    default_fs = gridfs.GridFS(db)
+    return default_fs
 
-    return img_source
-    
+
 def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonly=False, path=None,
                               imagenet_username='ardila', accesskey='bd662acb4866553500f17babd5992810e0b5a439'):
     """
@@ -215,8 +213,7 @@ class Imagenet(object):
         
         self.default_preproc = {'resize_to': (256, 256), 'mode': 'RGB', 'dtype': 'float32',
                                 'crop': None, 'mask': None, 'normalize': True}
-                                
-   
+
     def imagenet_home(self, *suffix_paths):
         return os.path.join(get_data_home(), 'imagenet', *suffix_paths)                                
 
@@ -281,7 +278,6 @@ class Imagenet(object):
             cPickle.dump(tree, open(os.path.join(folder, filename), 'wb'))
             print 'done'
         return tree
-
 
     def _get_synset_meta(self):
         """Loads the synset meta from file, if it exists.
@@ -378,8 +374,10 @@ class cache():
 
 
 def download_file_to_folder(filename, folder, source=get_img_source()):
-    command = 'rsync -az ' + os.path.join(source, filename) + ' ' + folder
-    os.system(command)
+    file_from_source = source.get(filename)
+    file_obj = open(os.path.join(folder, filename), 'w')
+    file_obj.write(file_from_source.read())
+    file_obj.close()
 
 
 class ImgDownloaderCacherPreprocessor(dataset_templates.ImageLoaderPreprocesser):
@@ -428,13 +426,12 @@ def load_and_process(file_path, preproc):
 
 
 class Imagenet_synset_subset(Imagenet):
-    """
-    :param synset_list: List of synsets to include in this subset
-    :param img_path: Path to image files
-    :param name: Unique name for this subset
-    """   
 
     def __init__(self, data):
+        """
+        data has 1 field you can setparams
+            synset_list: List of synsets to include in this subset
+        """
         self.synset_list = data['synset_list']
         super(Imagenet_synset_subset, self).__init__(data=data)
 
