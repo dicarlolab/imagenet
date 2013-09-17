@@ -28,6 +28,10 @@ from dldata import dataset_templates
 from joblib import Parallel, delayed
 import pymongo as pm
 import gridfs
+import tempfile
+
+#These synsets are reported by the api, but cannot be downloaded 9/16/2013
+broken_synsets = {'n04399382'}
 
 
 def get_id(l):
@@ -43,7 +47,8 @@ def get_img_source():
 
 
 def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonly=False, path=None,
-                              imagenet_username='ardila', accesskey='bd662acb4866553500f17babd5992810e0b5a439'):
+                              imagenet_username='ardila', accesskey='bd662acb4866553500f17babd5992810e0b5a439',
+                              grid_fs=None):
     """
     Stores a random #num images for synsets specified by synsets from the latest release to path specified
     Since files are stored as tar files online, the entire synset must be downloaded to access random images.
@@ -96,6 +101,36 @@ def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonl
     return meta
 
 
+def update_gridfs_with_synsets(synsets, fs, force=True,
+                               imagenet_username='ardila', accesskey='bd662acb4866553500f17babd5992810e0b5a439'):
+
+    filenames_dict = cPickle.loads(fs.get('filenames_dict.p').read())
+    for i, synset in enumerate(synsets):
+        filenames = []
+        url = 'http://www.image-net.org/download/synset?' + \
+              'wnid=' + str(synset) + \
+              '&username=' + imagenet_username + \
+              '&accesskey=' + accesskey + \
+              '&release=latest'
+        print i
+        print url
+        url_file = urlopen(url)
+        tar_file = tarfile.open(fileobj=url_file, mode='r|')
+
+        for tar_info in tar_file:
+            filename = tar_info.name
+            if force and fs.exists(filename):
+                fs.delete(filename)
+                print 'Overwriting '+filename
+            filenames.append(filename)
+            fs.put(tar_file.extractfile(tar_info), _id=filename)
+        filenames_dict[synset] = filenames
+    fs.delete('filenames_dict.p')
+    file_obj = open(os.path.join(get_data_home(), 'imagenet', 'filenames_dict.p'), 'wb')
+    cPickle.dump(filenames_dict, file_obj)
+    fs.put(file_obj, _id='filenames_dict.p')
+
+
 def download_2013_ILSCRV_synsets(num_per_synset='all', seed=None, path=None, firstonly=False):
     """
     Stores a random #num images for the 2013 ILSCRV synsets from the latest release.
@@ -110,9 +145,8 @@ def download_2013_ILSCRV_synsets(num_per_synset='all', seed=None, path=None, fir
         synset: the synset of the image
         filename: the filename of the image
     """
-    synsets_not_ready_yet = ['n04399382']  # Somehow, teddy bears are not ready for download as of 6/14/2013
     synsets = get2013_Categories()
-    synsets = set(synsets) - set(synsets_not_ready_yet)
+    synsets = set(synsets) - broken_synsets
     return download_images_by_synset(synsets, seed=seed, num_per_synset=num_per_synset, path=path, firstonly=firstonly)
 
 

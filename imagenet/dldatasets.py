@@ -4,7 +4,8 @@ import numpy as np
 from dataset import (Imagenet_filename_subset, 
                      Imagenet_synset_subset,
                      get2013_Categories,
-                     Imagenet)
+                     Imagenet,
+                     broken_synsets)
 
 
 class HvM_Categories(Imagenet_filename_subset):
@@ -92,7 +93,7 @@ class Big_Pixel_Screen(Imagenet_filename_subset):
     def __init__(self):
         random.seed('Big_Pixel_Screen')
         big_synsets = Imagenet().get_synset_list(thresh=1000)
-        screen_synsets = list(set(get2013_Categories()) | big_synsets)
+        screen_synsets = list((set(get2013_Categories()) | set(big_synsets)) - broken_synsets)
         filename_dict = self.get_full_filename_dictionary()
         filenames = []
         num_per_synset = 200

@@ -11,8 +11,8 @@ import imagenet.dldatasets as dldatasets
 def smoke_test():
     dataset = dldatasets.HvM_Categories()
     print dataset.meta[0]
-    
-    
+
+
 def test_Challenge_Synsets_20_Pixel_Hard_meta():
     dataset = dldatasets.Challenge_Synsets_20_Pixel_Hard()
     meta = dataset.meta
@@ -44,20 +44,21 @@ def test_Challenge_Synsets_20_Pixel_Hard_meta():
 
 def test_Challenge_Synsets_20_Pixel_Hard_imgs():
     #diego do you want this test somewhere else?
-    
+
     dataset = dldatasets.Challenge_Synsets_20_Pixel_Hard()
-    imgs = dataset.get_images(preproc={'resize_to': (256, 256), 
-                                        'mode': 'RGB', 
-                                        'dtype': 'float32', 
-                                        'normalize': False, 
-                                        'crop': None, 
+    imgs = dataset.get_images(preproc={'resize_to': (256, 256),
+                                        'mode': 'RGB',
+                                        'dtype': 'float32',
+                                        'normalize': False,
+                                        'crop': None,
                                         'mask': None})
-                                        
+
     inds = np.arange(0, imgs.shape[0], 1000)
     hashes = [hashlib.sha1(imgs[i]).hexdigest() for i in inds]
+    print hashes
     assert hashes == IMG_HASHES_HARD_20
-    
-    
+
+
 IMG_HASHES_HARD_20 = ['f4c09295dd8eab54f77afeaf63a173937a5e5a81',
  'a0c675d849e89c46b2d048fccce03d483f064c09',
  '3bb98cab79a21e7860dcefe47cefd285fdc6d4d7',

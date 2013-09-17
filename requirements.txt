@@ -1,2 +1,5 @@
+numpy
+pymongo
+joblib
 bs4
 -e git+http://github.com/dicarlolab/dldata.git@refactor#egg=dldata
