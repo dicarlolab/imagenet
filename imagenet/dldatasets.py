@@ -14,7 +14,7 @@ class HvM_Categories(Imagenet_filename_subset):
     Has an attribute called translation dict explaining the mapping
     """
     def __init__(self):
-        full_dict = self.get_full_filename_dictionary()
+        full_dict = self.get_full_filenames_dictionary()
         self.translation_dict = \
             {'Animals': 'n00015388',
              'Boats': 'n02858304',
@@ -45,7 +45,7 @@ class Challenge_Synsets_100_Random(Imagenet_filename_subset):
         random.seed('Challenge_Synsets_100_Random')
         synsets = random.sample(get2013_Categories(), 100)
         num_per_synset = 200
-        full_dict = self.get_full_filename_dictionary()
+        full_dict = self.get_full_filenames_dictionary()
         filenames = []
         for synset in synsets:
             filenames.extend(random.sample(full_dict[synset], num_per_synset))
@@ -94,29 +94,14 @@ class Big_Pixel_Screen(Imagenet_filename_subset):
         random.seed('Big_Pixel_Screen')
         big_synsets = Imagenet().get_synset_list(thresh=1000)
         screen_synsets = list((set(get2013_Categories()) | set(big_synsets)) - broken_synsets)
-        filename_dict = self.get_full_filename_dictionary()
+        full_filenames_dict = self.get_full_filenames_dictionary()
         filenames = []
+        filenames_dict = {}
         num_per_synset = 200
         for synset in screen_synsets:
-            filenames.extend(random.sample(filename_dict[synset], num_per_synset))
-        data = {'filenames': filenames}
+            filenames_from_synset = random.sample(full_filenames_dict[synset], num_per_synset)
+            filenames.extend(filenames_from_synset)
+            filenames_dict[synset] = filenames_from_synset
+        data = {'filenames': filenames,
+                'filenames_dict': filenames_dict}
         super(Big_Pixel_Screen, self).__init__(data=data)
-
-# import tarfile
-# import os
-# f = open(os.path.expanduser('~/output.txt')).readlines()
-# f = [a.rstrip() for a in f]
-# tars = [a for a in f if a.endswith('.tar')]
-# jpegs = set([a for a in f if a.endswith('.JPEG')])
-# file_list = []
-# tars = [synset+'.tar' for synset in get2013_Categories()]
-# total = float(len(tars))
-# for i, tar in enumerate(tars):
-#     print tar
-#     print i/total
-#     tar_file = tarfile.open(os.path.expanduser('~/imagenet_download/')+tar)
-#     tar_file.extractall(os.path.expanduser('~/imagenet/'))
-#     # for tarinfo in tar_file:
-#     #     filename = tarinfo.name
-#     #     file_list.append(filename)
-#     #     tar_file.extract(tarinfo, os.path.expanduser('~/imagenet_download/'))
