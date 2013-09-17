@@ -31,7 +31,7 @@ import gridfs
 import tempfile
 
 #These synsets are reported by the api, but cannot be downloaded 9/16/2013
-broken_synsets = {'n04399382'}
+broken_synsets = {'n04399382', 'n00442437'}
 
 
 def get_id(l):
@@ -39,10 +39,11 @@ def get_id(l):
 
 
 #TODO : deal with username and accesskey so that we can share this code
+db = pm.MongoClient('dicarlo5').gridfs_example
+default_fs = gridfs.GridFS(db)
+
 
 def get_img_source():
-    db = pm.MongoClient('dicarlo5').gridfs_example
-    default_fs = gridfs.GridFS(db)
     return default_fs
 
 
@@ -410,8 +411,25 @@ class cache():
             self.set.add(filename)
         return os.path.join(self.path, filename)
 
+    def download_set(self, filename_set, source, n_jobs=-1):
+        """
+        Downloads the image to the cache
+        :param filename: filename of image to download
+        :param source: string
+        :return: full path
+        """
+        list_to_download = list(filename_set-self.set)
 
-def download_file_to_folder(filename, folder, source=get_img_source()):
+        Parallel(n_jobs=n_jobs, verbose=100)(delayed(download_file_to_folder)(filename, self.path)
+                                             for filename in list_to_download)
+        self.set += filename_set
+        self.save()
+        return [os.path.join(self.path, filename) for filename in list(filename_set)]
+
+
+def download_file_to_folder(filename, folder, source=get_img_source(), verbose=False):
+    if verbose:
+        print filename
     file_from_source = source.get(filename)
     file_obj = open(os.path.join(folder, filename), 'w')
     file_obj.write(file_from_source.read())
@@ -449,8 +467,7 @@ class ImgDownloaderCacherPreprocessor(dataset_templates.ImageLoaderPreprocesser)
         if isinstance(file_names, str):
             file_names = [file_names]
 
-        file_paths = [self.cache.download(file_name, self.source) for file_name in file_names]
-        self.cache.save()
+        file_paths = self.cache.download_set(set(file_names), self.source)
         results = Parallel(n_jobs=-1)(delayed(load_and_process)(file_path, self.preproc) for file_path in file_paths)
         if len(file_names) > 1:
             return np.asarray(results)
