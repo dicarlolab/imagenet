@@ -481,8 +481,8 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         if isinstance(file_names, str):
             file_names = [file_names]
 
-        results = Parallel(n_jobs=-1)(delayed(download_and_process)(file_name, self.preproc)
-                                      for file_name in file_names)
+        results = Parallel(n_jobs=-1, verbose=100)(delayed(download_and_process)(file_name, self.preproc)
+                                                   for file_name in file_names)
         if len(file_names) > 1:
             return np.asarray(results)
         else:
@@ -495,7 +495,14 @@ def download_and_process(file_name, preproc):
     grid_file = fs.get(file_name)
     # file_like_obj = cStringIO(grid_file.read())
     processer = dataset_templates.ImageLoaderPreprocesser(preproc)
-    return processer.load_and_process(grid_file)
+    try:
+        rval = processer.load_and_process(grid_file)
+    except IOError:
+        print 'Image ' + file_name + 'is broken, will be replaced with zeros'
+        broken_list = cPickle.load(open('broken_images.p', 'rb')).append(file_name)
+        cPickle.dump(broken_list, open('broken_images.p', 'wb'))
+        rval = np.zeros(processer.load_and_process(fs.get('n04135315_18202.JPEG')).shape)
+    return rval
 
 
 class Imagenet_synset_subset(Imagenet):
