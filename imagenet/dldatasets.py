@@ -5,7 +5,8 @@ from dataset import (Imagenet_filename_subset,
                      Imagenet_synset_subset,
                      get2013_Categories,
                      Imagenet,
-                     broken_synsets)
+                     broken_synsets,
+                     default_fs)
 
 
 class HvM_Categories(Imagenet_filename_subset):
@@ -43,7 +44,7 @@ class HvM_Categories(Imagenet_filename_subset):
 class Challenge_Synsets_100_Random(Imagenet_filename_subset):
     def __init__(self):
         random.seed('Challenge_Synsets_100_Random')
-        synsets = random.sample(get2013_Categories(), 100)
+        synsets = random.sample(list(set(get2013_Categories())-set(broken_synsets)), 100)
         num_per_synset = 200
         full_dict = self.get_full_filenames_dictionary()
         filenames = []
@@ -78,6 +79,11 @@ class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
              'n04153751']
         data = {'synset_list': synsets}
         super(Challenge_Synsets_20_Pixel_Hard, self).__init__(data=data)
+
+    def get_hmo_feats0(self):
+        grid_file = default_fs.get('Challenge_synsets_20_Pixel_hard_800.npy')
+        feats = np.load(grid_file)
+        return feats
 
 
 class Challenge_Synsets_2_Pixel_Hard(Imagenet_synset_subset):
