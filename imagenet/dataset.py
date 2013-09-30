@@ -140,7 +140,6 @@ def update_gridfs_with_synsets(synsets, fs, force=True,
     fs.put(file_obj, _id='filenames_dict.p')
 
 
-
 def download_2013_ILSCRV_synsets(num_per_synset='all', seed=None, path=None, firstonly=False):
     """
     Stores a random #num images for the 2013 ILSCRV synsets from the latest release.
@@ -252,6 +251,8 @@ class Imagenet(object):
         self.meta_path = self.local_home('meta')
         if not os.path.exists(self.meta_path):
             os.makedirs(self.meta_path)
+            
+        self.cache = cache(img_path)
         
         self.default_preproc = {'resize_to': (256, 256), 'mode': 'RGB', 'dtype': 'float32',
                                 'crop': None, 'mask': None, 'normalize': True}
@@ -369,19 +370,13 @@ class Imagenet(object):
         return filenames_dict
 
     def get_filename_dictionary(self):
-        filename = os.path.join(self.meta_path, 'filenames_dict.p')
         if not hasattr(self, 'filenames_dict'):
-            try:
-                self.filenames_dict = cPickle.load(open(filename, 'rb'))
-            except IOError:
-                print 'Could not load filenames_dict from file, constructing from full filenames_dict'
-                full_dict = self.get_full_filenames_dictionary()
-                synset_list = self.get_synset_list()
-                self.filenames_dict = {synset: full_dict[synset] for synset in synset_list}
-                cPickle.dump(self.filenames_dict, open(filename, 'wb'))
+            full_dict = self.get_full_filenames_dictionary()
+            synset_list = self.get_synset_list()
+            self.filenames_dict = {synset: full_dict[synset] for synset in synset_list}
         return self.filenames_dict
 
-    def get_images(self, preproc, n_jobs=-1):
+    def get_images(self, preproc):
         """
         Create a lazily reevaluated array with preprocessing specified by a preprocessing dictionary
         preproc. See the documentation in ImgDownloaderCacherPreprocesser
@@ -389,15 +384,61 @@ class Imagenet(object):
         """
         file_names = self.meta['filename']
         img_source = get_img_source()
-        processor = ImgDownloaderPreprocessor(
-            source=img_source, preproc=preproc, n_jobs=n_jobs)
+        processor = ImgDownloaderPreprocessor(source=img_source, cache=self.cache, preproc=preproc)
         return larray.lmap(processor,
                            file_names,
                            f_map=processor)
 
-    def get_pixel_features(self, preproc=None, n_jobs=-1):
+    def get_pixel_features(self, preproc=None):
         preproc['flatten'] = True
-        return self.get_images(preproc, n_jobs)
+        return self.get_images(preproc)
+
+
+class cache():
+    def __init__(self, path, cache_set=None, folder_fn=None):
+        """
+        Folder_fn is a function that takes the filename and returns a folder to be appended to the cache's path
+        This is useful if you want your cache to not all be in one folder, as is the case with large image sets
+        since some file systems do not support more than a certain number of folders
+        """
+        self.path = path
+        self.folder_fn = folder_fn
+        if cache_set is None:
+            try:
+                self.set = cPickle.load(open(os.path.join(path, 'cached_set.p'), 'rb'))
+            except IOError:
+                self.set = set([filename for filename in os.listdir(path) if fnmatch.fnmatch(filename, '*.JPEG')])
+
+    def save(self):
+        cPickle.dump(self.set, open(os.path.join(self.path, 'cached_set.p'), 'wb'))
+
+    def download(self, filename, source):
+        """
+        Downloads the image to the cache
+        :param filename: filename of image to download
+        :param source: string
+        :return: full path
+        """
+        if filename not in self.set:
+            print 'downloading file ' + str(filename)
+            download_file_to_folder(filename, self.path, source)
+            self.set.add(filename)
+        return os.path.join(self.path, filename)
+
+    def download_set(self, filename_set, source, n_jobs=-1):
+        """
+        Downloads the image to the cache
+        :param filename: filename of image to download
+        :param source: string
+        :return: full path
+        """
+        list_to_download = list(filename_set-self.set)
+
+        Parallel(n_jobs=n_jobs, verbose=100)(delayed(download_file_to_folder)(filename, self.path)
+                                             for filename in list_to_download)
+        self.set += filename_set
+        self.save()
+        return [os.path.join(self.path, filename) for filename in list(filename_set)]
 
 
 def download_file_to_folder(filename, folder, source=get_img_source(), verbose=False):
@@ -414,7 +455,7 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
     Class used to lazily downloading images to a cache, evaluating resizing/other pre-processing
     and loading image from file in an larray
     """
-    def __init__(self, source, preproc, n_jobs=-1):
+    def __init__(self, source, cache, preproc):
         """
         :param source: string, adress passable to rsync where images are located
         :param cache: a cache object with a path and set membership checking
@@ -427,9 +468,9 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
             normalize: If true, then the image set to zero mean and unit standard deviation
 
         """
+        self.cache = cache
         self.source = source
         self.preproc = preproc
-        self.n_jobs = n_jobs
         super(ImgDownloaderPreprocessor, self).__init__(preproc)
 
     def __call__(self, file_names):
@@ -439,12 +480,9 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         """
         if isinstance(file_names, str):
             file_names = [file_names]
-        if (self.n_jobs == 0) or (len(file_names) < 10):
-            results = [self.load_and_process(self.source.get(f)) for f in file_names]
-        else:
-            results = Parallel(
-                n_jobs=self.n_jobs, verbose=100)(
-                    delayed(download_and_process)(file_name, self.preproc, self.source) for file_name in file_names)
+
+        results = Parallel(n_jobs=-1, verbose=100)(delayed(download_and_process)(file_name, self.preproc)
+                                                   for file_name in file_names)
         if len(file_names) > 1:
             return np.asarray(results)
         else:
@@ -452,8 +490,8 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         # return np.asarray(map(self.load_and_process, np.asarray(file_paths)))
 
 
-def download_and_process(file_name, preproc, source):
-    fs = source
+def download_and_process(file_name, preproc):
+    fs = get_img_source()
     grid_file = fs.get(file_name)
     # file_like_obj = cStringIO(grid_file.read())
     processer = dataset_templates.ImageLoaderPreprocesser(preproc)
@@ -496,3 +534,8 @@ class Imagenet_filename_subset(Imagenet_synset_subset):
                     synset_list.append(synset)
         data['synset_list'] = self.filenames_dict.keys()
         super(Imagenet_filename_subset, self).__init__(data=data)
+
+
+
+
+
