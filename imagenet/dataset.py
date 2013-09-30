@@ -49,8 +49,7 @@ def get_img_source():
 
 
 def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonly=False, path=None,
-                              imagenet_username='ardila', accesskey='bd662acb4866553500f17babd5992810e0b5a439',
-                              grid_fs=None):
+                              imagenet_username='ardila', accesskey='bd662acb4866553500f17babd5992810e0b5a439'):
     """
     Stores a random #num images for synsets specified by synsets from the latest release to path specified
     Since files are stored as tar files online, the entire synset must be downloaded to access random images.
@@ -138,7 +137,6 @@ def update_gridfs_with_synsets(synsets, fs, force=True,
     file_obj.close()
     file_obj = open(os.path.join(get_data_home(), 'imagenet', 'filenames_dict.p'), 'rb')
     fs.put(file_obj, _id='filenames_dict.p')
-
 
 
 def download_2013_ILSCRV_synsets(num_per_synset='all', seed=None, path=None, firstonly=False):
@@ -417,7 +415,6 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
     def __init__(self, source, preproc, n_jobs=-1):
         """
         :param source: string, adress passable to rsync where images are located
-        :param cache: a cache object with a path and set membership checking
         :param preproc: A preprocessing spec. A preprocessing spec is a dictionary containing:
             resize_to: Image is resized to the tuple given here (note: not reshaped)
             dtype: The datatype of the image array
@@ -439,12 +436,9 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         """
         if isinstance(file_names, str):
             file_names = [file_names]
-        if (self.n_jobs == 0) or (len(file_names) < 10):
-            results = [self.load_and_process(self.source.get(f)) for f in file_names]
-        else:
-            results = Parallel(
-                n_jobs=self.n_jobs, verbose=100)(
-                    delayed(download_and_process)(file_name, self.preproc, self.source) for file_name in file_names)
+        results = Parallel(
+            n_jobs=self.n_jobs, verbose=100)(
+                delayed(download_and_process)(file_name, self.preproc) for file_name in file_names)
         if len(file_names) > 1:
             return np.asarray(results)
         else:
@@ -452,8 +446,14 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         # return np.asarray(map(self.load_and_process, np.asarray(file_paths)))
 
 
-def download_and_process(file_name, preproc, source):
-    fs = source
+def download_and_process(file_name, preproc):
+    """
+
+    :param file_name: which file to download
+    :param preproc: preproc spec (see ImageLoaderPreprocesser)
+    :return: array of preprocessed image
+    """
+    fs = get_img_source()
     grid_file = fs.get(file_name)
     # file_like_obj = cStringIO(grid_file.read())
     processer = dataset_templates.ImageLoaderPreprocesser(preproc)
