@@ -1,12 +1,17 @@
 import itertools
 import random
 import numpy as np
+import cPickle
+import sys
+import os
 from dataset import (Imagenet_filename_subset, 
                      Imagenet_synset_subset,
                      get2013_Categories,
                      Imagenet,
                      broken_synsets,
                      default_fs)
+from joblib import Memory
+
 
 
 class HvM_Categories(Imagenet_filename_subset):
@@ -111,3 +116,36 @@ class Big_Pixel_Screen(Imagenet_filename_subset):
         data = {'filenames': filenames,
                 'filenames_dict': filenames_dict}
         super(Big_Pixel_Screen, self).__init__(data=data)
+
+
+class PixelHardSynsets(Imagenet_filename_subset):
+    def __init__(self):
+        seed = 'PixelhardSynsets'
+        folder = os.path.abspath(__file__+'/..')
+        synsets = cPickle.load(open(os.path.join(folder, 'PixelHardSynsetList.p'), 'rb'))
+        num_per_synset = 400
+
+        mem = Memory(os.path.join(folder, 'PrecomputedDicts'))
+        self.compute_filename_dict = mem.cache(self.compute_filename_dict)
+
+        filenames, filenames_dict = self.compute_filename_dict(synsets, num_per_synset, seed)
+        data = {'filenames': filenames,
+                'filenames_dict': filenames_dict}
+        super(PixelHardSynsets, self).__init__(data=data)
+
+    def compute_filename_dict(self, synsets, num_per_synset, seed):
+        print 'cached filename dict not found, computing from full filename dict'
+        random.seed(seed)
+        full_filenames_dict = self.get_full_filenames_dictionary()
+        filenames = []
+        filenames_dict = {}
+        for synset in synsets:
+            num_in_synset = len(full_filenames_dict[synset])
+            if num_per_synset > num_in_synset:
+                print '%s does not have enough images, using %s avaible' % (synset, num_in_synset)
+                filenames_from_synset = full_filenames_dict[synset]
+            else:
+                filenames_from_synset = random.sample(full_filenames_dict[synset], num_per_synset)
+            filenames.extend(filenames_from_synset)
+            filenames_dict[synset] = filenames_from_synset
+        return filenames, filenames_dict
