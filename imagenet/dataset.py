@@ -461,11 +461,11 @@ def download_and_process(file_name, preproc):
         rval = processer.load_and_process(grid_file)
     except IOError:
         print 'Image ' + file_name + 'is broken, will be replaced with zeros'
-        if os.path.exists('broken_images.p'):
-            broken_list = cPickle.load(open('broken_images.p', 'rb')).append(file_name)
-        else:
-            broken_list = []
-        cPickle.dump(broken_list, open('broken_images.p', 'wb'))
+        # if os.path.exists('broken_images.p'):
+        #     broken_list = cPickle.load(open('broken_images.p', 'rb')).append(file_name)
+        # else:
+        #     broken_list = []
+        # cPickle.dump(broken_list, open('broken_images.p', 'wb'))
         rval = np.zeros(processer.load_and_process(fs.get('n04135315_18202.JPEG')).shape)
     return rval
 
