@@ -2,7 +2,6 @@ import itertools
 import random
 import numpy as np
 import cPickle
-import sys
 import os
 from dataset import (Imagenet_filename_subset, 
                      Imagenet_synset_subset,
@@ -38,13 +37,14 @@ class HvM_Categories(Imagenet_filename_subset):
         data = {'filenames': filenames}
         super(HvM_Categories, self).__init__(data=data)
 
+    # noinspection PyCallingNonCallable
     def memmap_pixel_features(self):
         import os.path as path
         filename = path.join(self.img_path, 'HvM.dat')
         return np.memmap(filename, 'float32', 'w+')
 
 
-#this is the dataset we used in pixel screening
+#this is the dataset we used in pixel preproc screening
 class Challenge_Synsets_100_Random(Imagenet_filename_subset):
     def __init__(self):
         random.seed('Challenge_Synsets_100_Random')
@@ -58,6 +58,7 @@ class Challenge_Synsets_100_Random(Imagenet_filename_subset):
         super(Challenge_Synsets_100_Random, self).__init__(data=data)
 
 
+#this dataset is broken
 class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
     def __init__(self):
         synsets =   \
@@ -83,6 +84,8 @@ class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
              'n04153751']
         data = {'synset_list': synsets}
         super(Challenge_Synsets_20_Pixel_Hard, self).__init__(data=data)
+        print 'THIS DATASET IS BROKEN: IT IS NOT PIXEL HARD'
+        raise NameError
 
     def get_hmo_feats0(self):
         grid_file = default_fs.get('Challenge_synsets_20_Pixel_hard_800.npy')
