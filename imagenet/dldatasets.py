@@ -58,38 +58,6 @@ class Challenge_Synsets_100_Random(Imagenet_filename_subset):
         super(Challenge_Synsets_100_Random, self).__init__(data=data)
 
 
-class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
-    def __init__(self):
-        synsets =   \
-            ['n03196217',
-             'n02236044',
-             'n02091831',
-             'n03259280',
-             'n02102318',
-             'n02795169',
-             'n03633091',
-             'n03950228',
-             'n03804744',
-             'n03424325',
-             'n04265275',
-             'n04200800',
-             'n03666591',
-             'n02097474',
-             'n02096177',
-             'n04507155',
-             'n02109047',
-             'n02093428',
-             'n04599235',
-             'n04153751']
-        data = {'synset_list': synsets}
-        super(Challenge_Synsets_20_Pixel_Hard, self).__init__(data=data)
-
-    def get_hmo_feats0(self):
-        grid_file = default_fs.get('Challenge_synsets_20_Pixel_hard_800.npy')
-        feats = np.load(grid_file)
-        return feats
-
-
 class Challenge_Synsets_2_Pixel_Hard(Imagenet_synset_subset):
     def __init__(self):
         synsets =   \
