@@ -13,7 +13,6 @@ from dataset import (Imagenet_filename_subset,
 from joblib import Memory
 
 
-
 class HvM_Categories(Imagenet_filename_subset):
     """
     Hand-chosen imagenet equivalents of HvM categories
@@ -118,12 +117,9 @@ class Big_Pixel_Screen(Imagenet_filename_subset):
         super(Big_Pixel_Screen, self).__init__(data=data)
 
 
-class PixelHardSynsets(Imagenet_filename_subset):
-    def __init__(self):
-        seed = 'PixelhardSynsets'
+class RandomSampleSubset(Imagenet_filename_subset):
+    def __init__(self, seed, synsets, num_per_synset):
         folder = os.path.abspath(__file__+'/..')
-        synsets = cPickle.load(open(os.path.join(folder, 'PixelHardSynsetList.p'), 'rb'))
-        num_per_synset = 400
 
         mem = Memory(os.path.join(folder, 'PrecomputedDicts'))
         self.compute_filename_dict = mem.cache(self.compute_filename_dict)
@@ -131,7 +127,7 @@ class PixelHardSynsets(Imagenet_filename_subset):
         filenames, filenames_dict = self.compute_filename_dict(synsets, num_per_synset, seed)
         data = {'filenames': filenames,
                 'filenames_dict': filenames_dict}
-        super(PixelHardSynsets, self).__init__(data=data)
+        super(RandomSampleSubset, self).__init__(data=data)
 
     def compute_filename_dict(self, synsets, num_per_synset, seed):
         print 'cached filename dict not found, computing from full filename dict'
@@ -149,3 +145,21 @@ class PixelHardSynsets(Imagenet_filename_subset):
             filenames.extend(filenames_from_synset)
             filenames_dict[synset] = filenames_from_synset
         return filenames, filenames_dict
+
+
+class PixelHardSynsets(RandomSampleSubset):
+    def __init__(self):
+        seed = 'PixelHardSynsets'
+        folder = os.path.abspath(__file__+'/..')
+        synsets = cPickle.load(open(os.path.join(folder, 'PixelHardSynsetList.p'), 'rb'))[:833]
+        num_per_synset = 400
+        super(PixelHardSynsets, self).__init__(seed=seed, synsets=synsets, num_per_synset=num_per_synset)
+
+
+class PixelHardSynsets20(RandomSampleSubset):
+    def __init__(self):
+        seed = 'PixelHardSynsets20'
+        folder = os.path.abspath(__file__+'/..')
+        synsets = cPickle.load(open(os.path.join(folder, 'PixelHardSynsetList.p'), 'rb'))[:20]
+        num_per_synset = 400
+        super(PixelHardSynsets20, self).__init__(seed=seed, synsets=synsets, num_per_synset=num_per_synset)
