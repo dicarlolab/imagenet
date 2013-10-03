@@ -15,11 +15,13 @@ def get_tar_filenames(path=None):
     return [filename for filename in os.listdir(path) if filename.endswith('.tar')]
 
 
-db = pm.MongoClient('dicarlo5').gridfs_example
-default_fs = gridfs.GridFS(db)
+#for example:
+#IMAGENET_DB_PORT = int(os.environ.get('IMAGENET_DB_PORT', 27017))
+#db = pm.MongoClient('localhost', port=IMAGENET_DB_PORT).gridfs_example
+#fs = gridfs.GridFS(db)
 
 
-def put_tar_file_contents_on_gridfs(tar_file_name, fs=default_fs, force=True):
+def put_tar_file_contents_on_gridfs(tar_file_name, fs, force=True):
     print 'uploading '+tar_file_name
     tar_file = tarfile.open(tar_file_name, mode='r|')
     filenames = []

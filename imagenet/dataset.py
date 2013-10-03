@@ -1,5 +1,5 @@
 """A module docstring that describes the nature of the data set, the web site that describes the data set more fully,
-and contain relevant references to academic literature.
+0;95;cand contain relevant references to academic literature.
 
 Logic for downloading the data set from the most official internet distribution location possible.
 Logic for unpacking and loading that data set into primitive Python data types, if possible."""
@@ -40,12 +40,13 @@ def get_id(l):
 
 
 #TODO : deal with username and accesskey so that we can share this code
-db = pm.MongoClient('dicarlo5').gridfs_example
-default_fs = gridfs.GridFS(db)
+IMAGENET_DB_PORT = int(os.environ.get('IMAGENET_DB_PORT', 27017))
+IMAGENET_SOURCE_DB = pm.MongoClient('localhost', port=IMAGENET_DB_PORT).gridfs_example
+IMAGENET_FS = gridfs.GridFS(IMAGENET_SOURCE_DB)
 
 
 def get_img_source():
-    return default_fs
+    return IMAGENET_FS
 
 
 def download_images_by_synset(synsets, seed=None, num_per_synset='all', firstonly=False, path=None,
