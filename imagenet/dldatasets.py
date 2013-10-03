@@ -8,7 +8,7 @@ from dataset import (Imagenet_filename_subset,
                      get2013_Categories,
                      Imagenet,
                      broken_synsets,
-                     default_fs)
+                     IMAGENET_FS)
 from joblib import Memory
 
 
@@ -88,7 +88,7 @@ class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
         raise NameError
 
     def get_hmo_feats0(self):
-        grid_file = default_fs.get('Challenge_synsets_20_Pixel_hard_800.npy')
+        grid_file = IMAGENET_FS.get('Challenge_synsets_20_Pixel_hard_800.npy')
         feats = np.load(grid_file)
         return feats
 
