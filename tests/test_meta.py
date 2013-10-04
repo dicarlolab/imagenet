@@ -59,6 +59,21 @@ def test_meta_PixelHardSynsets20():
                                   'n01540090']
 
 
+def test_PixelHardSynsets20_hardness():
+    """
+    this test should try to actively ensure that the synsets as listed are actually hard.
+    
+    To do this, you could pick (e.g.) 10 reference synsets.  
+    Then using MCC classifier, compute the binary separation for the top few synsets in 
+    PixelHardSynsets20.synset_list against each of the  10 reference synsets.   Also
+    do so for a few randomly chosen synsets NOT in the top 20 hardest.  
+    Then assert that the classification results for the hard sets are worse than the randomly chosen sets. 
+    *you probably also want to assert that you get the correct expected accuracy values for each of these 
+    classification problems*
+    """
+    pass
+
+
 def test_image_source():
     """DY: this test is currently failing for me.   
     """  
