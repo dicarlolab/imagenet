@@ -451,7 +451,7 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
             n_jobs=self.n_jobs, verbose=100)(
                 delayed(download_and_process)(filename_block, self.preproc, 
                    cache=self.cache, cachedir=self.cachedir) for filename_block in filename_blocks)
-        results = itertools.chain(*results)
+        results = list(itertools.chain(*results))
         if len(file_names) > 1:
             return np.asarray(results)
         else:
