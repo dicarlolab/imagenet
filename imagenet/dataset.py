@@ -453,7 +453,6 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
 
 def download_and_process(file_name, preproc):
     """
-
     :param file_name: which file to download
     :param preproc: preproc spec (see ImageLoaderPreprocesser)
     :return: array of preprocessed image
