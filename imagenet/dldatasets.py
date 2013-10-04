@@ -120,17 +120,29 @@ class Big_Pixel_Screen(Imagenet_filename_subset):
         super(Big_Pixel_Screen, self).__init__(data=data)
 
 
-class RandomSampleSubset(Imagenet_filename_subset):
+class RandomSampleSubset(Imagenet):
     def __init__(self, seed, synsets, num_per_synset):
-        folder = os.path.abspath(__file__+'/..')
+        #folder = self.local_home('PrecomputedDicts')
+        #mem = Memory(folder)
+        #self.compute_filename_dict = mem.cache(self.compute_filename_dict)
+        #filenames, filenames_dict = self.compute_filename_dict(synsets, num_per_synset, seed)
 
-        mem = Memory(os.path.join(folder, 'PrecomputedDicts'))
-        self.compute_filename_dict = mem.cache(self.compute_filename_dict)
-
-        filenames, filenames_dict = self.compute_filename_dict(synsets, num_per_synset, seed)
-        data = {'filenames': filenames,
-                'filenames_dict': filenames_dict}
+        self.synset_list = synsets
+        data = {'synset_list': synsets, 
+                'num_per_synset': num_per_synset,
+                'seed': seed}
         super(RandomSampleSubset, self).__init__(data=data)
+        self.construct_and_attach_filename_data()
+
+    def construct_and_attach_filename_data(self):
+        synsets = self.synset_list
+        num_per_synset = self.data['num_per_synset']
+        seed = self.data['seed']
+        folder = self.local_home('PrecomputedDicts')
+        mem = Memory(folder)
+        compute_filename_dict = mem.cache(self.compute_filename_dict)
+        filenames, filenames_dict = compute_filename_dict(synsets, num_per_synset, seed)
+        self.filenames_dict = filenames_dict
 
     def compute_filename_dict(self, synsets, num_per_synset, seed):
         print 'cached filename dict not found, computing from full filename dict'

@@ -4,6 +4,9 @@ import random
 
 
 def test_names():
+    """this test is too brittle.  it is currently broken and probably should be eliminated
+       and replaced with more informative tests. 
+    """
     names = []
     dataset = imagenet.dldatasets.PixelHardSynsets20()
     names.append(dataset.specific_name)
@@ -26,11 +29,40 @@ def test_names():
         'Challenge_Synsets_2_Pixel_Hard_389367a954e9440e2ecf04aedd32684395600fa4',
         'Imagenet_6eef6648406c333a4035cd5e60d0bf2ecf2606d7']
 
-    assert all([x == y for x, y in zip(names, true_names)]), 'Datasets have the correct image files in them'
+    assertion = [x == y for x, y in zip(names, true_names)]
+    assert all(assertion), ("Datasets don't have correct names:", names, true_names)
+
+
+def test_meta_PixelHardSynsets20():
+    """Is this test correct?  Anyway, we need more like it. 
+    """
+    dataset = inet.dldatasets.PixelHardSynsets20()
+    assert dataset.synset_list = ['n02262449',
+                                  'n01773549',
+                                  'n03376159',
+                                  'n01623425',
+                                  'n02152881',
+                                  'n01317813',
+                                  'n02084071',
+                                  'n02356381',
+                                  'n03016737',
+                                  'n02075296',
+                                  'n01772664',
+                                  'n03745146',
+                                  'n02437616',
+                                  'n01887474',
+                                  'n02093428',
+                                  'n02324587',
+                                  'n02441942',
+                                  'n02358890',
+                                  'n01563746',
+                                  'n01540090']
 
 
 def test_image_source():
-    dataset = imagenet.dataset.Imagenet()
+    """DY: this test is currently failing for me.   
+    """  
+    dataset = imagenet.dataset.FullImagenet()
     filenames = dataset.meta['filename']
     source = imagenet.dataset.get_img_source()
     random.seed(0)

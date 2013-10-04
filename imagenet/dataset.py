@@ -240,6 +240,10 @@ class Imagenet(object):
      
     def __init__(self, data=None):
     
+        cname = self.__class__.__name__
+        if cname == 'Imagenet':
+            raise ValueError, 'The Imagenet base class should not be directly instantiated'
+
         self.data = data
         self.specific_name = self.__class__.__name__ + '_' + get_id(data)   
         
@@ -256,10 +260,10 @@ class Imagenet(object):
                                 'crop': None, 'mask': None, 'normalize': True}
 
     def imagenet_home(self, *suffix_paths):
-        return os.path.join(get_data_home(), 'imagenet', *suffix_paths)                                
+        return os.path.join(get_data_home(), 'imagenet', *suffix_paths)
 
     def local_home(self, *suffix_paths):
-        return os.path.join(get_data_home(), self.specific_name, *suffix_paths)                           
+        return self.imagenet_home(self.specific_name, *suffix_paths)
 
     @property
     def meta(self):
@@ -497,3 +501,9 @@ class Imagenet_filename_subset(Imagenet_synset_subset):
                     synset_list.append(synset)
         data['synset_list'] = self.filenames_dict.keys()
         super(Imagenet_filename_subset, self).__init__(data=data)
+
+
+class FullImagenet(Imagenet):
+    """All the images in Imagenet. 
+    """
+    pass 
