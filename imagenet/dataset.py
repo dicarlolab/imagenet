@@ -384,7 +384,7 @@ class Imagenet(object):
                 cPickle.dump(self.filenames_dict, open(filename, 'wb'))
         return self.filenames_dict
 
-    def get_images(self, preproc, n_jobs=-1):
+    def get_images(self, preproc, n_jobs=-1, cache=False):
         """
         Create a lazily reevaluated array with preprocessing specified by a preprocessing dictionary
         preproc. See the documentation in ImgDownloaderCacherPreprocesser
@@ -392,8 +392,9 @@ class Imagenet(object):
         """
         file_names = self.meta['filename']
         img_source = get_img_source()
+        cachedir = self.imagenet_home('images')
         processor = ImgDownloaderPreprocessor(
-            source=img_source, preproc=preproc, n_jobs=n_jobs)
+            source=img_source, preproc=preproc, n_jobs=n_jobs, cache=cache, cachedir=cachedir)
         return larray.lmap(processor,
                            file_names,
                            f_map=processor)
@@ -417,7 +418,7 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
     Class used to lazily downloading images to a cache, evaluating resizing/other pre-processing
     and loading image from file in an larray
     """
-    def __init__(self, source, preproc, n_jobs=-1):
+    def __init__(self, source, preproc, n_jobs=-1, cache=False, cachedir=None):
         """
         :param source: string, adress passable to rsync where images are located
         :param preproc: A preprocessing spec. A preprocessing spec is a dictionary containing:
@@ -432,6 +433,8 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         self.source = source
         self.preproc = preproc
         self.n_jobs = n_jobs
+        self.cache = cache
+        self.cachedir = cachedir
         super(ImgDownloaderPreprocessor, self).__init__(preproc)
 
     def __call__(self, file_names):
@@ -441,28 +444,50 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         """
         if isinstance(file_names, str):
             file_names = [file_names]
+        blocksize = 1
+        numblocks = int(math.ceil(len(file_names) / float(blocksize)))
+        filename_blocks = [file_names[i*blocksize: (i+1)*blocksize].tolist() for i in range(numblocks)] 
         results = Parallel(
             n_jobs=self.n_jobs, verbose=100)(
-                delayed(download_and_process)(file_name, self.preproc) for file_name in file_names)
+                delayed(download_and_process)(filename_block, self.preproc, 
+                   cache=self.cache, cachedir=self.cachedir) for filename_block in filename_blocks)
+        results = itertools.chain(*results)
         if len(file_names) > 1:
             return np.asarray(results)
         else:
             return np.asarray(results)[0]
         # return np.asarray(map(self.load_and_process, np.asarray(file_paths)))
 
+import math
+import itertools
 
-def download_and_process(file_name, preproc):
+
+def download_and_process(file_names, preproc, cache=False, cachedir=None):
+    processer = dataset_templates.ImageLoaderPreprocesser(preproc)
+    rvals = [download_and_process_core(fname, processer, cache, cachedir) for fname in file_names]    
+    return rvals
+
+def download_and_process_core(file_name, processer, cache, cachedir):
     """
     :param file_name: which file to download
     :param preproc: preproc spec (see ImageLoaderPreprocesser)
     :return: array of preprocessed image
     """
-    fs = get_img_source()
-    grid_file = fs.get(file_name)
+    if cache:
+        path = os.path.join(cachedir, file_name)
+        if not os.path.isfile(path):
+            print('Downloading and caching: %s' % path)
+            fs = get_img_source()
+            fileobj = fs.get(file_name)
+            with open(path, 'wb') as _f:
+                _f.write(fileobj.read())
+        fileobj = open(path)
+    else:
+        fs = get_img_source()
+        fileobj = fs.get(file_name)
     # file_like_obj = cStringIO(grid_file.read())
-    processer = dataset_templates.ImageLoaderPreprocesser(preproc)
     try:
-        rval = processer.load_and_process(grid_file)
+        rval = processer.load_and_process(fileobj)
     except IOError:
         print 'Image ' + file_name + 'is broken, will be replaced with zeros'
         # if os.path.exists('broken_images.p'):

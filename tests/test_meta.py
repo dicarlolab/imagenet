@@ -1,7 +1,8 @@
 __author__ = 'headradio'
-import imagenet.dataset
 import random
+import time
 
+import imagenet.dataset
 
 def test_names():
     """this test is too brittle.  it is currently broken and probably should be eliminated
@@ -37,7 +38,7 @@ def test_meta_PixelHardSynsets20():
     """Is this test correct?  Anyway, we need more like it. 
     """
     dataset = inet.dldatasets.PixelHardSynsets20()
-    assert dataset.synset_list = ['n02262449',
+    assert dataset.synset_list == ['n02262449',
                                   'n01773549',
                                   'n03376159',
                                   'n01623425',
@@ -96,3 +97,30 @@ def test_image_source():
         '421b9f33622b47cc37e0653a1f638a2a2cb23f6e']
 
     assert all([x == y for x, y in zip(hashes, true_hashes)]), 'A small random sample of all files is correct'
+
+
+def test_get_images():
+    dset = imagenet.dldatasets.PixelHardSynsets2013Challenge()
+    preproc = {'crop': None,
+      'dtype': 'float32',
+      'mask': None,
+      'mode': 'RGB',
+      'normalize': True,
+      'resize_to': (64, 64)}
+    imgs = dset.get_images(preproc=preproc)
+    t = time.time()
+    X = imgs[:1000]
+    t0 = time.time() - t
+
+    imgs1 = dset.get_images(preproc=preproc, cache=True)
+    t = time.time()
+    X = imgs1[:1000]
+    t1 = time.time() - t
+    t = time.time()
+    X = imgs1[:1000]
+    t2 = time.time() - t
+    print('Time to get 1000 images, no cache: %f' % t0)
+    print('Time to get 1000 images, cache -- first time (might already be cached): %f' % t1)
+    print('Time to get 1000 images, cache -- second time: %f' % t2)
+
+    
