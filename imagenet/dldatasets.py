@@ -162,10 +162,16 @@ class RandomSampleSubset(Imagenet):
         return filenames, filenames_dict
 
 
+def get_pixel_hard_synsets():
+    folder = os.path.abspath(__file__+'/..')
+    synsets = cPickle.load(open(os.path.join(folder, 'PixelHardSynsetList.p'), 'rb'))
+    return  synsets
+
+
 class PixelHardSynsets(RandomSampleSubset):
     def __init__(self):
         folder = os.path.abspath(__file__+'/..')
-        synsets = cPickle.load(open(os.path.join(folder, 'PixelHardSynsetList.p'), 'rb'))[:833]
+        synsets = get_pixel_hard_synsets()[:833]
         num_per_synset = 400
         super(PixelHardSynsets, self).__init__(synsets=synsets, num_per_synset=num_per_synset, seed=0)
 
@@ -173,7 +179,7 @@ class PixelHardSynsets(RandomSampleSubset):
 class PixelHardSynsets20(RandomSampleSubset):
     def __init__(self):
         folder = os.path.abspath(__file__+'/..')
-        synsets = cPickle.load(open(os.path.join(folder, 'PixelHardSynsetList.p'), 'rb'))[:20]
+        synsets = get_pixel_hard_synsets()[:20]
         num_per_synset = 400
         super(PixelHardSynsets20, self).__init__(synsets=synsets, num_per_synset=num_per_synset, seed=0)
 
@@ -181,7 +187,7 @@ class PixelHardSynsets20(RandomSampleSubset):
 class PixelHardSynsets2013Challenge(RandomSampleSubset):
     def __init__(self):
         folder = os.path.abspath(__file__+'/..')
-        synsets = cPickle.load(open(os.path.join(folder, 'PixelHardSynsetList.p'), 'rb'))
+        synsets = get_pixel_hard_synsets()
         clist = get2013_Categories()
         synsets = [c for c in synsets if c in clist]
         num_per_synset = 400
@@ -191,10 +197,21 @@ class PixelHardSynsets2013Challenge(RandomSampleSubset):
 class PixelHardSynsets2013ChallengeTop40Screenset(RandomSampleSubset):
     def __init__(self):
         folder = os.path.abspath(__file__+'/..')
-        synsets = cPickle.load(open(os.path.join(folder, 'PixelHardSynsetList.p'), 'rb'))
+        synsets = get_pixel_hard_synsets()
         clist = get2013_Categories()
         synsets = [c for c in synsets if c in clist][:40]
         num_per_synset = 250
         super(PixelHardSynsets2013ChallengeTop40Screenset, self).__init__(synsets=synsets, num_per_synset=num_per_synset,
+                                                                          seed=0)
+
+
+class PixelHardSynsets2013ChallengeTop25Screenset(RandomSampleSubset):
+    def __init__(self):
+        folder = os.path.abspath(__file__+'/..')
+        synsets = get_pixel_hard_synsets()
+        clist = get2013_Categories()
+        synsets = [c for c in synsets if c in clist][:25]
+        num_per_synset = 250
+        super(PixelHardSynsets2013ChallengeTop25Screenset, self).__init__(synsets=synsets, num_per_synset=num_per_synset,
                                                                           seed=0)
 
