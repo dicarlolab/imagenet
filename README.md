@@ -29,6 +29,17 @@ or if you don't have root access
 ```
 $ pip install --user -e git+http://github.com/dicarlolab/imagenet.git#egg=imagenet
 ```
+you have to install the requirements from the requirements file as well
+
+```
+pip install -r requirements.txt
+```
+
+tunnel to the database
+
+```
+ssh -f -N -L 27017:localhost:27017 username@dicarlo5.mit.edu
+```
 
 Some examples:
 =====================
