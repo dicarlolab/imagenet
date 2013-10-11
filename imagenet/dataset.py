@@ -265,6 +265,9 @@ class Imagenet(object):
     def local_home(self, *suffix_paths):
         return self.imagenet_home(self.specific_name, *suffix_paths)
 
+    def home(self, *suffix_paths):
+        return self.local_home(*suffix_paths)
+
     @property
     def meta(self):
         if not hasattr(self, '_meta'):
