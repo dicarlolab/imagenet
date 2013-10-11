@@ -443,7 +443,7 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         :return: image
         """
         if isinstance(file_names, str):
-            file_names = [file_names]
+            file_names = np.array([file_names])
         blocksize = 1
         numblocks = int(math.ceil(len(file_names) / float(blocksize)))
         filename_blocks = [file_names[i*blocksize: (i+1)*blocksize].tolist() for i in range(numblocks)] 
