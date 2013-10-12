@@ -236,26 +236,26 @@ def get_definition_dictionary():
     return definition_dictionary
 
 
-class Imagenet(object):
-     
+class Imagenet_Base(object):
+
     def __init__(self, data=None):
-    
+
         cname = self.__class__.__name__
         if cname == 'Imagenet':
             raise ValueError, 'The Imagenet base class should not be directly instantiated'
 
         self.data = data
-        self.specific_name = self.__class__.__name__ + '_' + get_id(data)   
-        
+        self.specific_name = self.__class__.__name__ + '_' + get_id(data)
+
         img_path = self.imagenet_home('images')
         if not os.path.exists(img_path):
             os.makedirs(img_path)
         self.img_path = img_path
-        
+
         self.meta_path = self.local_home('meta')
         if not os.path.exists(self.meta_path):
             os.makedirs(self.meta_path)
-        
+
         self.default_preproc = {'resize_to': (256, 256), 'mode': 'RGB', 'dtype': 'float32',
                                 'crop': None, 'mask': None, 'normalize': True}
 
@@ -446,10 +446,10 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
             file_names = [file_names]
         blocksize = 1
         numblocks = int(math.ceil(len(file_names) / float(blocksize)))
-        filename_blocks = [file_names[i*blocksize: (i+1)*blocksize].tolist() for i in range(numblocks)] 
+        filename_blocks = [file_names[i*blocksize: (i+1)*blocksize].tolist() for i in range(numblocks)]
         results = Parallel(
             n_jobs=self.n_jobs, verbose=100)(
-                delayed(download_and_process)(filename_block, self.preproc, 
+                delayed(download_and_process)(filename_block, self.preproc,
                    cache=self.cache, cachedir=self.cachedir) for filename_block in filename_blocks)
         results = itertools.chain(*results)
         if len(file_names) > 1:
@@ -464,7 +464,7 @@ import itertools
 
 def download_and_process(file_names, preproc, cache=False, cachedir=None):
     processer = dataset_templates.ImageLoaderPreprocesser(preproc)
-    rvals = [download_and_process_core(fname, processer, cache, cachedir) for fname in file_names]    
+    rvals = [download_and_process_core(fname, processer, cache, cachedir) for fname in file_names]
     return rvals
 
 def download_and_process_core(file_name, processer, cache, cachedir):
@@ -499,7 +499,7 @@ def download_and_process_core(file_name, processer, cache, cachedir):
     return rval
 
 
-class Imagenet_synset_subset(Imagenet):
+class Imagenet_synset_subset(Imagenet_Base):
 
     def __init__(self, data):
         """
@@ -528,6 +528,6 @@ class Imagenet_filename_subset(Imagenet_synset_subset):
 
 
 class FullImagenet(Imagenet):
-    """All the images in Imagenet. 
+    """All the images in Imagenet.
     """
-    pass 
+    pass
