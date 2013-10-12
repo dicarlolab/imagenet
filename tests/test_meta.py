@@ -114,11 +114,13 @@ def test_get_images():
 
     imgs1 = dset.get_images(preproc=preproc, cache=True)
     t = time.time()
-    X = imgs1[:1000]
+    X1 = imgs1[:1000]
     t1 = time.time() - t
     t = time.time()
-    X = imgs1[:1000]
+    X1 = imgs1[:1000]
     t2 = time.time() - t
+    
+    assert (X == X1).all()
     print('Time to get 1000 images, no cache: %f' % t0)
     print('Time to get 1000 images, cache -- first time (might already be cached): %f' % t1)
     print('Time to get 1000 images, cache -- second time: %f' % t2)

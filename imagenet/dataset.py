@@ -265,6 +265,9 @@ class Imagenet_Base(object):
     def local_home(self, *suffix_paths):
         return self.imagenet_home(self.specific_name, *suffix_paths)
 
+    def home(self, *suffix_paths):
+        return self.local_home(*suffix_paths)
+
     @property
     def meta(self):
         if not hasattr(self, '_meta'):
@@ -443,7 +446,7 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         :return: image
         """
         if isinstance(file_names, str):
-            file_names = [file_names]
+            file_names = np.array([file_names])
         blocksize = 1
         numblocks = int(math.ceil(len(file_names) / float(blocksize)))
         filename_blocks = [file_names[i*blocksize: (i+1)*blocksize].tolist() for i in range(numblocks)]
@@ -451,7 +454,7 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
             n_jobs=self.n_jobs, verbose=100)(
                 delayed(download_and_process)(filename_block, self.preproc,
                    cache=self.cache, cachedir=self.cachedir) for filename_block in filename_blocks)
-        results = itertools.chain(*results)
+        results = list(itertools.chain(*results))
         if len(file_names) > 1:
             return np.asarray(results)
         else:
