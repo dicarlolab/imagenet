@@ -12,7 +12,7 @@ import cPickle
 import itertools
 from urllib2 import urlopen
 from collections import defaultdict
-
+import networkx
 import numpy as np
 import tabular as tb
 import skdata.larray as larray
@@ -25,6 +25,11 @@ from joblib import Parallel, delayed
 import pymongo as pm
 import gridfs
 
+try:
+    from nltk.corpus import wordnet as wn
+except ImportError:
+    print 'You must download wordnet using nltk.download() (see readme)'
+    raise ValueError
 #These synsets are reported by the api, but cannot be downloaded 9/16/2013
 broken_synsets = {'n04399382'}
 
@@ -32,6 +37,9 @@ broken_synsets = {'n04399382'}
 def get_id(l):
     return hashlib.sha1(repr(l)).hexdigest()
 
+
+def descendants(graph, source):
+    return set(networkx.shortest_path_length(graph, source).keys()) - set([source])
 
 #TODO : deal with username and accesskey so that we can share this code
 IMAGENET_DB_PORT = int(os.environ.get('IMAGENET_DB_PORT', 27017))
@@ -181,22 +189,6 @@ def get2013_Categories():
     return synset_list
 
 
-def parent_child(synset_list):
-    """
-        Tests whether synsets in a list overlap in hierarchy.
-        Returns true if any synset is a descendant of any other
-        synset_list: list of strings (synsets)
-        """
-    urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
-    value = False  # innocent until proven guilty
-    for synset in synset_list:
-        children = [synset.rstrip().lstrip('-') for synset in urlopen(urlbase + synset).readlines()[1:]]
-        if any(child in synset_list for child in children):
-            value = True
-            break
-    return value
-
-
 def save_filename_dict_from_img_folder(path=None):
     """
     Run this code at IMG_SOURCE to build the dictionary.
@@ -294,32 +286,26 @@ class Imagenet_Base(object):
             self._synset_meta = self._get_synset_meta()
         return self._synset_meta
 
-    def get_tree_structure(self):
-        synset_list = self.get_synset_list()
-        filename = 'full_tree_structure.p'
+    @property
+    def full_tree_structure(self):
+        if not hasattr(self, '_full_tree_structure'):
+            self._full_tree_structure = self._get_full_tree_structure()
+        return self._full_tree_structure
+
+    def _get_full_tree_structure(self):
+        filename = 'full_tree_structure_wordnet.p'
         folder = self.imagenet_home()
         try:
             full_tree_structure = cPickle.load(open(os.path.join(folder, filename), 'rb'))
-            tree = {synset: full_tree_structure[synset] for synset in synset_list}
         except IOError:
-            print "Calculating full tree structure using api"
-            urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
-            tree = defaultdict(dict)
-            # multiple_parents = []
-            for i, synset in enumerate(synset_list):
-                if i % 100 == 0:
-                    print float(i) / len(synset_list)
-                children = [wnid.rstrip().lstrip('-') for wnid in urlopen(urlbase + synset).readlines()[1:]]
-                tree[synset]['children'] = children
-                for child in children:
-                    if tree[child].get('parents') is not None:
-                        tree[child]['parents'].append(synset)
-                        # multiple_parents.append(child)
-                    else:
-                        tree[child]['parents'] = [synset]
-            cPickle.dump(tree, open(os.path.join(folder, filename), 'wb'))
+            print "Calculating full tree structure using wordnet"
+            imagenet_format = lambda synset: 'n' + "%08d" % synset.offset
+            full_tree_structure = networkx.DiGraph()
+            [[full_tree_structure.add_edge(imagenet_format(parent), imagenet_format(child))
+              for child in parent.hyponyms()] for parent in wn.all_synsets()]
+            cPickle.dump(full_tree_structure, open(os.path.join(folder, filename), 'wb'))
             print 'done'
-        return tree
+        return full_tree_structure
 
     def _get_synset_meta(self):
         """Loads the synset meta from file, if it exists.
@@ -332,13 +318,10 @@ class Imagenet_Base(object):
             words = get_word_dictionary()
             definitions = get_definition_dictionary()
             filenames = self.get_filename_dictionary()
-            tree_struct = self.get_tree_structure()
             synset_meta = dict([(synset, {'words': words[synset],
                                           'definition': definitions[synset],
                                           'filenames': filenames[synset],
-                                          'num_images': len(filenames[synset]),
-                                          'parents': tree_struct[synset].get('parents'),
-                                          'children': tree_struct[synset].get('children')})
+                                          'num_images': len(filenames[synset])})
                                 for synset in self.synset_list])
             cPickle.dump(synset_meta, open(os.path.join(self.meta_path, 'synset_meta.p'), 'wb'))
         return synset_meta
@@ -354,6 +337,16 @@ class Imagenet_Base(object):
         if thresh > 0:
             rval = filter(lambda x: self.synset_meta[x]['num_images'] >= thresh, rval)
         return rval
+
+    def overlapping_tuples(self, synset_list=None):
+        tree_struct = self.full_tree_structure
+        if synset_list is None:
+            synset_list = self.get_synset_list()
+        overlapping_tuples = []
+        for s1, s2 in itertools.combinations(synset_list, 2):
+            if s2 in descendants(tree_struct, s1):
+                overlapping_tuples.append((s1, s2))
+        return overlapping_tuples
 
     def get_full_filenames_dictionary(self):
     #This is a (maybe _the_) key piece of metadata, so it is installed to a specific location locally
@@ -526,3 +519,4 @@ class Imagenet(Imagenet_Base):
     """All the images in Imagenet.
     """
     pass
+
