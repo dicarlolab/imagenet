@@ -241,7 +241,7 @@ class Imagenet_Base(object):
     def __init__(self, data=None):
 
         cname = self.__class__.__name__
-        if cname == 'Imagenet':
+        if cname == 'Imagenet_Base':
             raise ValueError, 'The Imagenet base class should not be directly instantiated'
 
         self.data = data
@@ -530,7 +530,7 @@ class Imagenet_filename_subset(Imagenet_synset_subset):
         super(Imagenet_filename_subset, self).__init__(data=data)
 
 
-class FullImagenet(Imagenet):
+class Imagenet(Imagenet_Base):
     """All the images in Imagenet.
     """
     pass

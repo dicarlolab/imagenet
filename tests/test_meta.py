@@ -1,12 +1,12 @@
 __author__ = 'headradio'
 import random
 import time
-
+import imagenet
 import imagenet.dataset
 
 def test_names():
     """this test is too brittle.  it is currently broken and probably should be eliminated
-       and replaced with more informative tests. 
+       and replaced with more informative tests.
     """
     names = []
     dataset = imagenet.dldatasets.PixelHardSynsets20()
@@ -15,29 +15,28 @@ def test_names():
     names.append(dataset.specific_name)
     dataset = imagenet.dldatasets.HvM_Categories()
     names.append(dataset.specific_name)
-    dataset = imagenet.dldatasets.Challenge_Synsets_100_Random()
+    #Slow to initialize and probably will not be reused anywhere
+    #dataset = imagenet.dldatasets.Challenge_Synsets_100_Random()
     names.append(dataset.specific_name)
     dataset = imagenet.dldatasets.Challenge_Synsets_2_Pixel_Hard()
     names.append(dataset.specific_name)
     dataset = imagenet.dataset.Imagenet()
     names.append(dataset.specific_name)
-
-    true_names = [
-        'PixelHardSynsets20_fb902a720218ad6cf75934c09f48f1678cc9c823',
-        'PixelHardSynsets_d052b5fa9f7026955c799ce238b096ac00615298',
-        'HvM_Categories_e5e3929ca9d206fa0f82767a0bf63c40bf7c586a',
-        'Challenge_Synsets_100_Random_5048eda891e0a7ec15381684e593eecfa9dc9234',
-        'Challenge_Synsets_2_Pixel_Hard_389367a954e9440e2ecf04aedd32684395600fa4',
-        'Imagenet_6eef6648406c333a4035cd5e60d0bf2ecf2606d7']
+    true_names = ['PixelHardSynsets20_5187c7eddfa35093111e22705310e385d36f8ecf',
+                  'PixelHardSynsets_75372977ac90b6148148f3286d31d26ace3d578e',
+                  'HvM_Categories_e5e3929ca9d206fa0f82767a0bf63c40bf7c586a',
+                  #'Challenge_Synsets_100_Random_5048eda891e0a7ec15381684e593eecfa9dc9234',
+                  'Challenge_Synsets_2_Pixel_Hard_389367a954e9440e2ecf04aedd32684395600fa4',
+                  'Imagenet_6eef6648406c333a4035cd5e60d0bf2ecf2606d7']
 
     assertion = [x == y for x, y in zip(names, true_names)]
     assert all(assertion), ("Datasets don't have correct names:", names, true_names)
 
 
 def test_meta_PixelHardSynsets20():
-    """Is this test correct?  Anyway, we need more like it. 
+    """Is this test correct?  Anyway, we need more like it.
     """
-    dataset = inet.dldatasets.PixelHardSynsets20()
+    dataset = imagenet.dldatasets.PixelHardSynsets20()
     assert dataset.synset_list == ['n02262449',
                                   'n01773549',
                                   'n03376159',
@@ -63,22 +62,22 @@ def test_meta_PixelHardSynsets20():
 def test_PixelHardSynsets20_hardness():
     """
     this test should try to actively ensure that the synsets as listed are actually hard.
-    
-    To do this, you could pick (e.g.) 10 reference synsets.  
-    Then using MCC classifier, compute the binary separation for the top few synsets in 
+
+    To do this, you could pick (e.g.) 10 reference synsets.
+    Then using MCC classifier, compute the binary separation for the top few synsets in
     PixelHardSynsets20.synset_list against each of the  10 reference synsets.   Also
-    do so for a few randomly chosen synsets NOT in the top 20 hardest.  
-    Then assert that the classification results for the hard sets are worse than the randomly chosen sets. 
-    *you probably also want to assert that you get the correct expected accuracy values for each of these 
+    do so for a few randomly chosen synsets NOT in the top 20 hardest.
+    Then assert that the classification results for the hard sets are worse than the randomly chosen sets.
+    *you probably also want to assert that you get the correct expected accuracy values for each of these
     classification problems*
     """
     pass
 
 
 def test_image_source():
-    """DY: this test is currently failing for me.   
-    """  
-    dataset = imagenet.dataset.FullImagenet()
+    """DY: this test is currently failing for me.
+    """
+    dataset = imagenet.dataset.Imagenet()
     filenames = dataset.meta['filename']
     source = imagenet.dataset.get_img_source()
     random.seed(0)
@@ -119,10 +118,10 @@ def test_get_images():
     t = time.time()
     X1 = imgs1[:1000]
     t2 = time.time() - t
-    
+
     assert (X == X1).all()
     print('Time to get 1000 images, no cache: %f' % t0)
     print('Time to get 1000 images, cache -- first time (might already be cached): %f' % t1)
     print('Time to get 1000 images, cache -- second time: %f' % t2)
 
-    
+

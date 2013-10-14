@@ -3,7 +3,7 @@ import random
 import numpy as np
 import cPickle
 import os
-from dataset import (Imagenet_filename_subset, 
+from dataset import (Imagenet_filename_subset,
                      Imagenet_synset_subset,
                      get2013_Categories,
                      Imagenet,
@@ -12,36 +12,6 @@ from dataset import (Imagenet_filename_subset,
 from joblib import Memory
 
 
-class HvM_Categories(Imagenet_filename_subset):
-    """
-    Hand-chosen imagenet equivalents of HvM categories
-    Has an attribute called translation dict explaining the mapping
-    """
-    def __init__(self):
-        full_dict = self.get_full_filenames_dictionary()
-        self.translation_dict = \
-            {'Animals': 'n00015388',
-             'Boats': 'n02858304',
-             'Cars': 'n02958343',
-             'Chairs': 'n03001627',
-             'Faces': 'n09618957',
-             'Fruits': 'n13134947',
-             'Planes': 'n02691156',
-             'Tables': 'n04379243'}
-
-        synset_list = self.translation_dict.values()
-        #8000 might still be too many images, here I'm subsetting
-        # the synsets to get a size similar to one of the variation levels
-        filenames = list(itertools.chain.from_iterable(full_dict[synset][0:200] for synset in synset_list))
-        self._old_filenames = list(itertools.chain.from_iterable(full_dict[synset][0:200] for synset in synset_list))
-        data = {'filenames': filenames}
-        super(HvM_Categories, self).__init__(data=data)
-
-    # noinspection PyCallingNonCallable
-    def memmap_pixel_features(self):
-        import os.path as path
-        filename = path.join(self.img_path, 'HvM.dat')
-        return np.memmap(filename, 'float32', 'w+')
 
 
 #this is the dataset we used in pixel preproc screening
@@ -128,7 +98,7 @@ class RandomSampleSubset(Imagenet):
         #filenames, filenames_dict = self.compute_filename_dict(synsets, num_per_synset, seed)
 
         self.synset_list = synsets
-        data = {'synset_list': synsets, 
+        data = {'synset_list': synsets,
                 'num_per_synset': num_per_synset,
                 'seed': seed}
         super(RandomSampleSubset, self).__init__(data=data)
@@ -214,4 +184,26 @@ class PixelHardSynsets2013ChallengeTop25Screenset(RandomSampleSubset):
         num_per_synset = 250
         super(PixelHardSynsets2013ChallengeTop25Screenset, self).__init__(synsets=synsets, num_per_synset=num_per_synset,
                                                                           seed=0)
+
+class HvM_Categories(RandomSampleSubset):
+    """
+    Hand-chosen imagenet equivalents of HvM categories
+    Has an attribute called translation dict explaining the mapping
+    """
+    def __init__(self):
+        self.translation_dict = \
+            {'Animals': 'n00015388',
+             'Boats': 'n02858304',
+             'Cars': 'n02958343',
+             'Chairs': 'n03001627',
+             'Faces': 'n09618957',
+             'Fruits': 'n13134947',
+             'Planes': 'n02691156',
+             'Tables': 'n04379243'}
+        synset_list = self.translation_dict.values()
+        num_per_synset = 200;
+        seed = 'HvM_Categories'
+        #8000 might still be too many images, here I'm subsetting
+        # the synsets to get a size similar to one of the variation levels
+        super(HvM_Categories, self).__init__(synsets=synset_list, seed=seed, num_per_synset=num_per_synset)
 
