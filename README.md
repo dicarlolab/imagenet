@@ -41,6 +41,13 @@ tunnel to the database
 ssh -f -N -L 27017:localhost:27017 username@dicarlo5.mit.edu
 ```
 
+you must also use the nltk package in an interactive python session to download wordnet
+
+``` python
+nltk.download()
+d wordnet
+```
+
 Some examples:
 =====================
 
@@ -73,12 +80,7 @@ get_images() can use the dataset.default_preproc spec
 images = dataset.get_images(dataset.default_preproc)
 ```
 
-you must also use the nltk package in an interactive python session to download wordnet
 
-``` python
-nltk.download()
-d wordnet
-```
 
 
 
