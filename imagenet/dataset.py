@@ -6,12 +6,10 @@ Logic for unpacking and loading that data set into primitive Python data types, 
 
 import os
 import hashlib
-import fnmatch
 import random
 import tarfile
 import cPickle
 import itertools
-import pwd
 from urllib2 import urlopen
 from collections import defaultdict
 
@@ -19,8 +17,6 @@ import numpy as np
 import tabular as tb
 import skdata.larray as larray
 from skdata.data_home import get_data_home
-from PIL import (Image,
-                 ImageOps)
 from bs4 import BeautifulSoup
 from random import sample
 
@@ -28,8 +24,6 @@ from dldata import dataset_templates
 from joblib import Parallel, delayed
 import pymongo as pm
 import gridfs
-import tempfile
-import cStringIO
 
 #These synsets are reported by the api, but cannot be downloaded 9/16/2013
 broken_synsets = {'n04399382'}
@@ -125,7 +119,7 @@ def update_gridfs_with_synsets(synsets, fs, force=True,
                 try:
                     if force:
                         fs.delete(filename)
-                        print 'Overwriting '+filename
+                        print 'Overwriting ' + filename
                     filenames.append(filename)
                     fs.put(tar_file.extractfile(tar_info), _id=filename)
                     not_uploaded = False
@@ -160,47 +154,47 @@ def download_2013_ILSCRV_synsets(num_per_synset='all', seed=None, path=None, fir
 
 
 def get2013_Categories():
-        """Get list of synsets in 2013 ILSCRV Challenge by scraping the challenge's website"""
-        name_list = []
-        synset_list = []
-        #Grabbed website to extract synsets for all images
-        parser = BeautifulSoup(urlopen("http://www.image-net.org/challenges/LSVRC/2013/browse-synsets"))
+    """Get list of synsets in 2013 ILSCRV Challenge by scraping the challenge's website"""
+    name_list = []
+    synset_list = []
+    #Grabbed website to extract synsets for all images
+    parser = BeautifulSoup(urlopen("http://www.image-net.org/challenges/LSVRC/2013/browse-synsets"))
 
-        def is_a_2013_category(tag):
-            """
+    def is_a_2013_category(tag):
+        """
             Returns true if the tag is a link to a category in the 2013 challenge
             :type tag: tag
             :rtype : boolean
             :param tag: tag object
             """
-            if tag.has_attr('href'):
-                if 'synset' in tag['href']:
-                    return True
-            else:
-                return False
+        if tag.has_attr('href'):
+            if 'synset' in tag['href']:
+                return True
+        else:
+            return False
 
-        linkTags = parser.findAll(is_a_2013_category)
-        for linkTag in linkTags:
-            name_list.append(linkTag.string)
-            link = linkTag['href']
-            synset_list.append(link.partition('=')[2])
-        return synset_list
+    linkTags = parser.findAll(is_a_2013_category)
+    for linkTag in linkTags:
+        name_list.append(linkTag.string)
+        link = linkTag['href']
+        synset_list.append(link.partition('=')[2])
+    return synset_list
 
 
 def parent_child(synset_list):
-        """
+    """
         Tests whether synsets in a list overlap in hierarchy.
         Returns true if any synset is a descendant of any other
         synset_list: list of strings (synsets)
         """
-        urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
-        value = False  # innocent until proven guilty
-        for synset in synset_list:
-            children = [synset.rstrip().lstrip('-') for synset in urlopen(urlbase+synset).readlines()[1:]]
-            if any(child in synset_list for child in children):
-                value = True
-                break
-        return value
+    urlbase = 'http://www.image-net.org/api/text/wordnet.structure.hyponym?wnid='
+    value = False  # innocent until proven guilty
+    for synset in synset_list:
+        children = [synset.rstrip().lstrip('-') for synset in urlopen(urlbase + synset).readlines()[1:]]
+        if any(child in synset_list for child in children):
+            value = True
+            break
+    return value
 
 
 def save_filename_dict_from_img_folder(path=None):
@@ -237,7 +231,6 @@ def get_definition_dictionary():
 
 
 class Imagenet_Base(object):
-
     def __init__(self, data=None):
 
         cname = self.__class__.__name__
@@ -289,7 +282,7 @@ class Imagenet_Base(object):
             print 'Could not load meta from file, constructing'
             s = self.synset_meta
             filenames = list(itertools.chain.from_iterable(
-                             [s[synset]['filenames'] for synset in self.synset_meta.keys()]))
+                [s[synset]['filenames'] for synset in self.synset_meta.keys()]))
             synsets = [filename.split('_')[0] for filename in filenames]
             meta = tb.tabarray(records=zip(filenames, synsets), names=['filename', 'synset'])
             tb.io.savebinary(os.path.join(self.meta_path, 'meta.npz'), meta)
@@ -315,8 +308,8 @@ class Imagenet_Base(object):
             # multiple_parents = []
             for i, synset in enumerate(synset_list):
                 if i % 100 == 0:
-                    print float(i)/len(synset_list)
-                children = [wnid.rstrip().lstrip('-') for wnid in urlopen(urlbase+synset).readlines()[1:]]
+                    print float(i) / len(synset_list)
+                children = [wnid.rstrip().lstrip('-') for wnid in urlopen(urlbase + synset).readlines()[1:]]
                 tree[synset]['children'] = children
                 for child in children:
                     if tree[child].get('parents') is not None:
@@ -421,6 +414,7 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
     Class used to lazily downloading images to a cache, evaluating resizing/other pre-processing
     and loading image from file in an larray
     """
+
     def __init__(self, source, preproc, n_jobs=-1, cache=False, cachedir=None):
         """
         :param source: string, adress passable to rsync where images are located
@@ -449,20 +443,20 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
             file_names = np.array([file_names])
         blocksize = 1
         numblocks = int(math.ceil(len(file_names) / float(blocksize)))
-        filename_blocks = [file_names[i*blocksize: (i+1)*blocksize].tolist() for i in range(numblocks)]
+        filename_blocks = [file_names[i * blocksize: (i + 1) * blocksize].tolist() for i in range(numblocks)]
         results = Parallel(
             n_jobs=self.n_jobs, verbose=100)(
-                delayed(download_and_process)(filename_block, self.preproc,
-                   cache=self.cache, cachedir=self.cachedir) for filename_block in filename_blocks)
+                delayed(download_and_process)(filename_block, self.preproc, cache=self.cache, cachedir=self.cachedir)
+                for filename_block in filename_blocks)
         results = list(itertools.chain(*results))
         if len(file_names) > 1:
             return np.asarray(results)
         else:
             return np.asarray(results)[0]
-        # return np.asarray(map(self.load_and_process, np.asarray(file_paths)))
+            # return np.asarray(map(self.load_and_process, np.asarray(file_paths)))
+
 
 import math
-import itertools
 
 
 def download_and_process(file_names, preproc, cache=False, cachedir=None):
@@ -470,25 +464,25 @@ def download_and_process(file_names, preproc, cache=False, cachedir=None):
     rvals = [download_and_process_core(fname, processer, cache, cachedir) for fname in file_names]
     return rvals
 
+
 def download_and_process_core(file_name, processer, cache, cachedir):
     """
     :param file_name: which file to download
-    :param preproc: preproc spec (see ImageLoaderPreprocesser)
+    :param processer: preprocesser object to use (see ImageLoaderPreprocesser)
     :return: array of preprocessed image
     """
+    fs = get_img_source()
     if cache:
         path = os.path.join(cachedir, file_name)
         if not os.path.isfile(path):
             print('Downloading and caching: %s' % path)
-            fs = get_img_source()
             fileobj = fs.get(file_name)
             with open(path, 'wb') as _f:
                 _f.write(fileobj.read())
         fileobj = open(path)
     else:
-        fs = get_img_source()
         fileobj = fs.get(file_name)
-    # file_like_obj = cStringIO(grid_file.read())
+        # file_like_obj = cStringIO(grid_file.read())
     try:
         rval = processer.load_and_process(fileobj)
     except IOError:
@@ -503,7 +497,6 @@ def download_and_process_core(file_name, processer, cache, cachedir):
 
 
 class Imagenet_synset_subset(Imagenet_Base):
-
     def __init__(self, data):
         """
         data has 1 field you can setparams
@@ -514,7 +507,6 @@ class Imagenet_synset_subset(Imagenet_Base):
 
 
 class Imagenet_filename_subset(Imagenet_synset_subset):
-
     def __init__(self, data):
         self.filenames_dict = data.get('filenames_dict')
         filenames = data['filenames']
