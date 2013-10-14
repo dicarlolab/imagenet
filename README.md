@@ -73,5 +73,13 @@ get_images() can use the dataset.default_preproc spec
 images = dataset.get_images(dataset.default_preproc)
 ```
 
+you must also use the nltk package in an interactive python session to download wordnet
+
+``` python
+nltk.download()
+d wordnet
+```
+
+
 
 
