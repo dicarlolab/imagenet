@@ -242,7 +242,7 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
             os.makedirs(self.meta_path)
 
         self.default_preproc = {'resize_to': (256, 256), 'mode': 'RGB', 'dtype': 'float32',
-                                'crop': None, 'mask': None, 'normalize': True}
+                                'crop': None, 'mask': None, 'normalize': False}
         super(Imagenet_Base, self).__init__(data)
 
     def imagenet_home(self, *suffix_paths):
