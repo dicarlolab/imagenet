@@ -473,7 +473,6 @@ def download_and_process_core(file_name, processer, cache, cachedir):
         fileobj = open(path)
     else:
         fileobj = fs.get(file_name)
-    print(fileobj)
         # file_like_obj = cStringIO(grid_file.read())
     try:
         rval = processer.load_and_process(fileobj)
