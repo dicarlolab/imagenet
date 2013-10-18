@@ -475,7 +475,7 @@ def download_and_process_core(file_name, processer, cache, cachedir):
         fileobj = fs.get(file_name)
         # file_like_obj = cStringIO(grid_file.read())
     try:
-        rval = processer.load_and_process(fileobj)
+        rval = processer.load_and_process(fileobj, fileobj)
     except IOError, e:
         print 'Image ' + file_name + 'is broken, will be replaced with zeros'
         print (e)
