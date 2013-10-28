@@ -69,6 +69,12 @@ class Challenge_Synsets_2_Pixel_Hard(Imagenet_synset_subset):
         super(Challenge_Synsets_2_Pixel_Hard, self).__init__(data=data)
 
 
+class ChallengeSynsets2013(Imagenet_synset_subset):
+     def __init__(self):
+         synsets = list(set(get2013_Categories()) - broken_synsets)
+         data = {'synset_list': synsets}
+         super(ChallengeSynsets2013, self).__init__(data=data)
+
 class Big_Pixel_Screen(Imagenet_filename_subset):
     def __init__(self):
         random.seed('Big_Pixel_Screen')
