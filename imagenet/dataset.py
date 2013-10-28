@@ -23,6 +23,7 @@ from dldata.stimulus_sets import dataset_templates
 from joblib import Parallel, delayed
 import pymongo as pm
 import gridfs
+import math
 
 try:
     from nltk.corpus import wordnet as wn
@@ -425,7 +426,7 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         self.cachedir = cachedir
         super(ImgDownloaderPreprocessor, self).__init__(preproc)
 
-    def __call__(self, file_names):
+    def __call__(self, file_names, ids):
         """
         :param file_names: file_names to download and preprocess
         :return: image
@@ -435,10 +436,12 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         blocksize = 1
         numblocks = int(math.ceil(len(file_names) / float(blocksize)))
         filename_blocks = [file_names[i * blocksize: (i + 1) * blocksize].tolist() for i in range(numblocks)]
+        id_blocks = [ids[i * blocksize: (i + 1) * blocksize].tolist() for i in range(numblocks)]
         results = Parallel(
             n_jobs=self.n_jobs, verbose=100)(
-            delayed(download_and_process)(filename_block, self.preproc, cache=self.cache, cachedir=self.cachedir)
-            for filename_block in filename_blocks)
+                delayed(download_and_process)(filename_block, id_blocks,
+                self.preproc, cache=self.cache, cachedir=self.cachedir)
+                for filename_block in filename_blocks)
         results = list(itertools.chain(*results))
         if len(file_names) > 1:
             return np.asarray(results)
@@ -447,16 +450,13 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
             # return np.asarray(map(self.load_and_process, np.asarray(file_paths)))
 
 
-import math
-
-
-def download_and_process(file_names, preproc, cache=False, cachedir=None):
+def download_and_process(file_names, ids, preproc, cache=False, cachedir=None):
     processer = dataset_templates.ImageLoaderPreprocesser(preproc)
-    rvals = [download_and_process_core(fname, processer, cache, cachedir) for fname in file_names]
+    rvals = [download_and_process_core(fname, id, processer, cache, cachedir) for fname, id in zip(file_names, ids)]
     return rvals
 
 
-def download_and_process_core(file_name, processer, cache, cachedir):
+def download_and_process_core(file_name, id, processer, cache, cachedir):
     """
     :param file_name: which file to download
     :param processer: preprocesser object to use (see ImageLoaderPreprocesser)
@@ -475,7 +475,7 @@ def download_and_process_core(file_name, processer, cache, cachedir):
         fileobj = fs.get(file_name)
         # file_like_obj = cStringIO(grid_file.read())
     try:
-        rval = processer.load_and_process(fileobj, fileobj)
+        rval = processer.load_and_process(fileobj, id)
     except IOError, e:
         print 'Image ' + file_name + 'is broken, will be replaced with zeros'
         print (e)
@@ -484,7 +484,7 @@ def download_and_process_core(file_name, processer, cache, cachedir):
         # else:
         #     broken_list = []
         # cPickle.dump(broken_list, open('broken_images.p', 'wb'))
-        rval = np.zeros(processer.load_and_process(fs.get('n04135315_18202.JPEG')).shape)
+        rval = np.zeros(processer.load_and_process(fs.get('n04135315_18202.JPEG'), 'n04135315_18202.JPEG').shape)
     return rval
 
 
