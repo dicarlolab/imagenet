@@ -378,12 +378,14 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
 
         """
         file_names = self.meta['filename']
+        file_ids = self.meta['id']
         img_source = get_img_source()
         cachedir = self.imagenet_home('images')
         processor = ImgDownloaderPreprocessor(
             source=img_source, preproc=preproc, n_jobs=n_jobs, cache=cache, cachedir=cachedir)
         return larray.lmap(processor,
                            file_names,
+                           file_ids,
                            f_map=processor)
 
     def get_pixel_features(self, preproc=None, n_jobs=-1):
@@ -425,8 +427,9 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         self.cachedir = cachedir
         super(ImgDownloaderPreprocessor, self).__init__(preproc)
 
-    def __call__(self, file_names):
+    def __call__(self, file_names, file_ids):
         """
+        :param file_ids: a unique name that can be used to allow for a unique random seed for each image
         :param file_names: file_names to download and preprocess
         :return: image
         """
@@ -437,8 +440,8 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         filename_blocks = [file_names[i * blocksize: (i + 1) * blocksize].tolist() for i in range(numblocks)]
         results = Parallel(
             n_jobs=self.n_jobs, verbose=100)(
-            delayed(download_and_process)(filename_block, self.preproc, cache=self.cache, cachedir=self.cachedir)
-            for filename_block in filename_blocks)
+            delayed(download_and_process)(filename_block, id_block, self.preproc, cache=self.cache, cachedir=self.cachedir)
+            for filename_block, id_block in zip(filename_blocks, file_ids))
         results = list(itertools.chain(*results))
         if len(file_names) > 1:
             return np.asarray(results)
@@ -450,13 +453,13 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
 import math
 
 
-def download_and_process(file_names, preproc, cache=False, cachedir=None):
+def download_and_process(file_names, file_ids, preproc, cache=False, cachedir=None):
     processer = dataset_templates.ImageLoaderPreprocesser(preproc)
-    rvals = [download_and_process_core(fname, processer, cache, cachedir) for fname in file_names]
+    rvals = [download_and_process_core(fname, file_ids, processer, cache, cachedir) for fname in file_names]
     return rvals
 
 
-def download_and_process_core(file_name, processer, cache, cachedir):
+def download_and_process_core(file_name, file_id, processer, cache, cachedir):
     """
     :param file_name: which file to download
     :param processer: preprocesser object to use (see ImageLoaderPreprocesser)
@@ -475,7 +478,7 @@ def download_and_process_core(file_name, processer, cache, cachedir):
         fileobj = fs.get(file_name)
         # file_like_obj = cStringIO(grid_file.read())
     try:
-        rval = processer.load_and_process(fileobj, fileobj)
+        rval = processer.load_and_process(fileobj, file_id)
     except IOError, e:
         print 'Image ' + file_name + 'is broken, will be replaced with zeros'
         print (e)
@@ -484,7 +487,7 @@ def download_and_process_core(file_name, processer, cache, cachedir):
         # else:
         #     broken_list = []
         # cPickle.dump(broken_list, open('broken_images.p', 'wb'))
-        rval = np.zeros(processer.load_and_process(fs.get('n04135315_18202.JPEG')).shape)
+        rval = np.zeros(processer.load_and_process(fs.get('n04135315_18202.JPEG')).shape, 0)
     return rval
 
 
