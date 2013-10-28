@@ -202,3 +202,10 @@ class HvM_Categories(RandomSampleSubset):
         #8000 might still be too many images, here I'm subsetting
         # the synsets to get a size similar to one of the variation levels
         super(HvM_Categories, self).__init__(synsets=synset_list, seed=seed, num_per_synset=num_per_synset)
+
+
+class ChallengeSynsets2013(Imagenet_synset_subset):
+         def __init__(self):
+                 synsets = list(set(get2013_Categories()) - broken_synsets)
+                 data = {'synset_list': synsets}
+                 super(ChallengeSynsets2013, self).__init__(data=data)
