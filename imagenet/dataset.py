@@ -439,7 +439,7 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         numblocks = int(math.ceil(len(file_names) / float(blocksize)))
         filename_blocks = [file_names[i * blocksize: (i + 1) * blocksize].tolist() for i in range(numblocks)]
         results = Parallel(
-            n_jobs=self.n_jobs, verbose=100)(
+            n_jobs=self.n_jobs)(
             delayed(download_and_process)(filename_block, id_block, self.preproc, cache=self.cache, cachedir=self.cachedir)
             for filename_block, id_block in zip(filename_blocks, file_ids))
         results = list(itertools.chain(*results))
