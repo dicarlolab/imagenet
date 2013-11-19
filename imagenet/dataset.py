@@ -394,19 +394,19 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
         return self.get_images(preproc, n_jobs)
 
     def publish_images(self, img_inds, preproc, bucket_name):
-        ids = [get_id(self.meta['id']+repr(preproc))]
+        ids = [get_id(str(image_id)+repr(preproc)) for image_id in self.meta['id']]
         source = get_img_source()
         if preproc is not None:
             raise NotImplementedError
         else:
-            filenames = self.meta['filename'][img_inds]
+            filenames = np.array(self.meta['filename'][img_inds])
         conn = boto.connect_s3()
-        b = conn.get_bucket(bucket_name)
+        b = conn.create_bucket(bucket_name)
         urls = []
         for image_id, filename in zip(ids, filenames):
-            k = b.new_key(image_id)
-            k.set_contents_from_file(source.get(filename), policy='public')
-            urls.append('http://s3.amazonaws.com/' + bucket_name + '/' + image_id)
+            k = b.new_key(image_id+'.jpg')
+            k.set_contents_from_file(source.get(str(filename[0])), policy='public-read')
+            urls.append('http://s3.amazonaws.com/' + bucket_name + '/' + image_id+ '.jpg')
         return urls
 
 
