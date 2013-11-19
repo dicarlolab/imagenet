@@ -23,6 +23,7 @@ from dldata.stimulus_sets import dataset_templates
 from joblib import Parallel, delayed
 import pymongo as pm
 import gridfs
+import boto
 
 try:
     from nltk.corpus import wordnet as wn
@@ -391,6 +392,24 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
     def get_pixel_features(self, preproc=None, n_jobs=-1):
         preproc['flatten'] = True
         return self.get_images(preproc, n_jobs)
+
+    def publish_images(self, img_inds, preproc, bucket_name):
+        ids = [get_id(self.meta['id']+repr(preproc))]
+        source = get_img_source()
+        if preproc is not None:
+            raise NotImplementedError
+        else:
+            filenames = self.meta['filename'][img_inds]
+        conn = boto.connect_s3()
+        b = conn.get_bucket(bucket_name)
+        urls = []
+        for image_id, filename in zip(ids, filenames):
+            k = b.new_key(image_id)
+            k.set_contents_from_file(source.get(filename), policy='public')
+            urls.append('http://s3.amazonaws.com/' + bucket_name + '/' + image_id)
+        return urls
+
+
 
 
 def download_file_to_folder(filename, folder, source=get_img_source(), verbose=False):
