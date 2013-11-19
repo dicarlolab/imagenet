@@ -52,7 +52,7 @@ class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
         data = {'synset_list': synsets}
         super(Challenge_Synsets_20_Pixel_Hard, self).__init__(data=data)
         print 'THIS DATASET IS BROKEN: IT IS NOT PIXEL HARD'
-        raise NameError
+        #raise NameError
 
     def get_hmo_feats0(self):
         grid_file = IMAGENET_FS.get('Challenge_synsets_20_Pixel_hard_800.npy')
