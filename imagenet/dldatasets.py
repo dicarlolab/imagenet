@@ -209,3 +209,10 @@ class ChallengeSynsets2013(Imagenet_synset_subset):
                  synsets = list(set(get2013_Categories()) - broken_synsets)
                  data = {'synset_list': synsets}
                  super(ChallengeSynsets2013, self).__init__(data=data)
+
+class ConvnetTest(Imagenet_filename_subset):
+        def __init__(self):
+            path_to_data = os.path.join(os.path.dirname(__file__), 'convnet_test.p')
+            files = cPickle.load(open(path_to_data, 'rb'))
+            data = {'filenames': files}
+            super(ConvnetTest, self).__init__(data=data)
