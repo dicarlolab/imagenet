@@ -506,7 +506,7 @@ def download_and_process_core(file_name, file_id, processer, cache, cachedir):
         # else:
         #     broken_list = []
         # cPickle.dump(broken_list, open('broken_images.p', 'wb'))
-        rval = np.zeros(processer.load_and_process(fs.get('n04135315_18202.JPEG')).shape, 0)
+        rval = np.zeros(processer.load_and_process(fs.get('n04135315_18202.JPEG'), 0).shape)
     return rval
 
 
