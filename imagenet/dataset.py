@@ -394,7 +394,7 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
         return self.get_images(preproc, n_jobs)
 
     def publish_images(self, img_inds, preproc, bucket_name):
-        ids = [get_id(str(image_id)+repr(preproc)) for image_id in self.meta['id']]
+        ids = [get_id(str(image_id)+repr(preproc)) for image_id in self.meta['id'][img_inds]]
         source = get_img_source()
         if preproc is not None:
             raise NotImplementedError
@@ -405,8 +405,8 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
         urls = []
         for image_id, filename in zip(ids, filenames):
             k = b.new_key(image_id+'.jpg')
-            k.set_contents_from_file(source.get(str(filename[0])), policy='public-read')
-            urls.append('http://s3.amazonaws.com/' + bucket_name + '/' + image_id+ '.jpg')
+            k.set_contents_from_file(source.get(str(filename)), policy='public-read')
+            urls.append('http://s3.amazonaws.com/' + bucket_name + '/' + image_id + '.jpg')
         return urls
 
 
