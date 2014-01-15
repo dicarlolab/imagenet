@@ -397,16 +397,22 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
         ids = [get_id(str(image_id)+repr(preproc)) for image_id in self.meta['id'][img_inds]]
         source = get_img_source()
         if preproc is not None:
+            I = self.get_images(self, preproc)
+
             raise NotImplementedError
         else:
             filenames = np.array(self.meta['filename'][img_inds])
         conn = boto.connect_s3()
         b = conn.create_bucket(bucket_name)
         urls = []
+        i = 0
         for image_id, filename in zip(ids, filenames):
-            k = b.new_key(image_id+'.jpg')
-            k.set_contents_from_file(source.get(str(filename)), policy='public-read')
-            urls.append('http://s3.amazonaws.com/' + bucket_name + '/' + image_id + '.jpg')
+            i += 1
+            if i % 100 == 0:
+                print i/float(len(filenames))
+            # k = b.new_key(image_id+'.jpg')
+            # k.set_contents_from_file(source.get(str(filename)), policy='public-read')
+            urls.append('https://s3.amazonaws.com/' + bucket_name + '/' + image_id + '.jpg')
         return urls
 
 
