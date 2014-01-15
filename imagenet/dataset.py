@@ -410,8 +410,8 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
             i += 1
             if i % 100 == 0:
                 print i/float(len(filenames))
-            # k = b.new_key(image_id+'.jpg')
-            # k.set_contents_from_file(source.get(str(filename)), policy='public-read')
+            k = b.new_key(image_id+'.jpg')
+            k.set_contents_from_file(source.get(str(filename)), policy='public-read')
             urls.append('https://s3.amazonaws.com/' + bucket_name + '/' + image_id + '.jpg')
         return urls
 
