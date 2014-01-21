@@ -5,8 +5,6 @@ Logic for downloading the data set from the most official internet distribution 
 Logic for unpacking and loading that data set into primitive Python data types, if possible."""
 
 import os
-import hashlib
-import random
 import tarfile
 import cPickle
 import itertools
@@ -18,28 +16,27 @@ import tabular as tb
 import skdata.larray as larray
 from skdata.data_home import get_data_home
 from bs4 import BeautifulSoup
+import random
 from random import sample
-
-from dldata import dataset_templates
+from dldata.stimulus_sets.dataset_templates import get_id
+from dldata.stimulus_sets import dataset_templates
 from joblib import Parallel, delayed
 import pymongo as pm
 import gridfs
+import boto
 
 try:
     from nltk.corpus import wordnet as wn
 except ImportError:
+    wn = None
     print 'You must download wordnet using nltk.download() (see readme)'
     raise ValueError
 #These synsets are reported by the api, but cannot be downloaded 9/16/2013
 broken_synsets = {'n04399382'}
 
 
-def get_id(l):
-    return hashlib.sha1(repr(l)).hexdigest()
-
-
 def descendants(graph, source):
-    return set(networkx.shortest_path_length(graph, source).keys()) - set([source])
+    return set(networkx.shortest_path_length(graph, source).keys()) - {source}
 
 #TODO : deal with username and accesskey so that we can share this code
 IMAGENET_DB_PORT = int(os.environ.get('IMAGENET_DB_PORT', 27017))
@@ -131,7 +128,7 @@ def update_gridfs_with_synsets(synsets, fs, force=True,
                     filenames.append(filename)
                     fs.put(tar_file.extractfile(tar_info), _id=filename)
                     not_uploaded = False
-                except:
+                except IOError:
                     print filename + ' Failed'
         filenames_dict[synset] = filenames
     fs.delete('filenames_dict.p')
@@ -222,17 +219,21 @@ def get_definition_dictionary():
     return definition_dictionary
 
 
-class Imagenet_Base(object):
+class Imagenet_Base(dataset_templates.ImageDatasetBase):
     def __init__(self, data=None):
 
+        """
+
+        :param data: data specifying how to build this dataset. should uniquely identify dataset among all datasets
+        :raise: ValueError if instantiated directly
+        """
         cname = self.__class__.__name__
         if cname == 'Imagenet_Base':
-            raise ValueError, 'The Imagenet base class should not be directly instantiated'
-
-        self.data = data
-        self.specific_name = self.__class__.__name__ + '_' + get_id(data)
+            print 'The Imagenet base class should not be directly instantiated'
+            raise ValueError
 
         img_path = self.imagenet_home('images')
+        self.specific_name = self.__class__.__name__ + '_' + get_id(data)
         if not os.path.exists(img_path):
             os.makedirs(img_path)
         self.img_path = img_path
@@ -242,7 +243,8 @@ class Imagenet_Base(object):
             os.makedirs(self.meta_path)
 
         self.default_preproc = {'resize_to': (256, 256), 'mode': 'RGB', 'dtype': 'float32',
-                                'crop': None, 'mask': None, 'normalize': True}
+                                'crop': None, 'mask': None, 'normalize': False}
+        super(Imagenet_Base, self).__init__(data)
 
     def imagenet_home(self, *suffix_paths):
         return os.path.join(get_data_home(), 'imagenet', *suffix_paths)
@@ -253,17 +255,14 @@ class Imagenet_Base(object):
     def home(self, *suffix_paths):
         return self.local_home(*suffix_paths)
 
-    @property
-    def meta(self):
-        if not hasattr(self, '_meta'):
-            self._meta = self._get_meta()
-        return self._meta
+    def fetch(self):
+        pass
 
     @property
     def filenames(self):
         return self.meta['filename']
 
-    def _get_meta(self):
+    def get_meta(self):
         """Loads the synset meta from file, if it exists.
         If it doesn't exist, calls _get_meta"""
         try:
@@ -276,7 +275,7 @@ class Imagenet_Base(object):
             filenames = list(itertools.chain.from_iterable(
                 [s[synset]['filenames'] for synset in self.synset_meta.keys()]))
             synsets = [filename.split('_')[0] for filename in filenames]
-            meta = tb.tabarray(records=zip(filenames, synsets), names=['filename', 'synset'])
+            meta = tb.tabarray(records=zip(filenames, synsets, filenames), names=['filename', 'synset', 'id'])
             tb.io.savebinary(os.path.join(self.meta_path, 'meta.npz'), meta)
         return meta
 
@@ -380,17 +379,43 @@ class Imagenet_Base(object):
 
         """
         file_names = self.meta['filename']
+        file_ids = self.meta['id']
         img_source = get_img_source()
         cachedir = self.imagenet_home('images')
         processor = ImgDownloaderPreprocessor(
             source=img_source, preproc=preproc, n_jobs=n_jobs, cache=cache, cachedir=cachedir)
         return larray.lmap(processor,
                            file_names,
+                           file_ids,
                            f_map=processor)
 
     def get_pixel_features(self, preproc=None, n_jobs=-1):
         preproc['flatten'] = True
         return self.get_images(preproc, n_jobs)
+
+    def publish_images(self, img_inds, preproc, bucket_name):
+        ids = [get_id(str(image_id)+repr(preproc)) for image_id in self.meta['id'][img_inds]]
+        source = get_img_source()
+        if preproc is not None:
+            I = self.get_images(self, preproc)
+
+            raise NotImplementedError
+        else:
+            filenames = np.array(self.meta['filename'][img_inds])
+        conn = boto.connect_s3()
+        b = conn.create_bucket(bucket_name)
+        urls = []
+        i = 0
+        for image_id, filename in zip(ids, filenames):
+            i += 1
+            if i % 100 == 0:
+                print i/float(len(filenames))
+            k = b.new_key(image_id+'.jpg')
+            k.set_contents_from_file(source.get(str(filename)), policy='public-read')
+            urls.append('https://s3.amazonaws.com/' + bucket_name + '/' + image_id + '.jpg')
+        return urls
+
+
 
 
 def download_file_to_folder(filename, folder, source=get_img_source(), verbose=False):
@@ -427,8 +452,9 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         self.cachedir = cachedir
         super(ImgDownloaderPreprocessor, self).__init__(preproc)
 
-    def __call__(self, file_names):
+    def __call__(self, file_names, file_ids):
         """
+        :param file_ids: a unique name that can be used to allow for a unique random seed for each image
         :param file_names: file_names to download and preprocess
         :return: image
         """
@@ -438,9 +464,9 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         numblocks = int(math.ceil(len(file_names) / float(blocksize)))
         filename_blocks = [file_names[i * blocksize: (i + 1) * blocksize].tolist() for i in range(numblocks)]
         results = Parallel(
-            n_jobs=self.n_jobs, verbose=100)(
-                delayed(download_and_process)(filename_block, self.preproc, cache=self.cache, cachedir=self.cachedir)
-                for filename_block in filename_blocks)
+            n_jobs=self.n_jobs)(
+            delayed(download_and_process)(filename_block, id_block, self.preproc, cache=self.cache, cachedir=self.cachedir)
+            for filename_block, id_block in zip(filename_blocks, file_ids))
         results = list(itertools.chain(*results))
         if len(file_names) > 1:
             return np.asarray(results)
@@ -452,13 +478,13 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
 import math
 
 
-def download_and_process(file_names, preproc, cache=False, cachedir=None):
+def download_and_process(file_names, file_ids, preproc, cache=False, cachedir=None):
     processer = dataset_templates.ImageLoaderPreprocesser(preproc)
-    rvals = [download_and_process_core(fname, processer, cache, cachedir) for fname in file_names]
+    rvals = [download_and_process_core(fname, file_ids, processer, cache, cachedir) for fname in file_names]
     return rvals
 
 
-def download_and_process_core(file_name, processer, cache, cachedir):
+def download_and_process_core(file_name, file_id, processer, cache, cachedir):
     """
     :param file_name: which file to download
     :param processer: preprocesser object to use (see ImageLoaderPreprocesser)
@@ -477,15 +503,16 @@ def download_and_process_core(file_name, processer, cache, cachedir):
         fileobj = fs.get(file_name)
         # file_like_obj = cStringIO(grid_file.read())
     try:
-        rval = processer.load_and_process(fileobj)
-    except IOError:
+        rval = processer.load_and_process(fileobj, file_id)
+    except IOError, e:
         print 'Image ' + file_name + 'is broken, will be replaced with zeros'
+        print (e)
         # if os.path.exists('broken_images.p'):
         #     broken_list = cPickle.load(open('broken_images.p', 'rb')).append(file_name)
         # else:
         #     broken_list = []
         # cPickle.dump(broken_list, open('broken_images.p', 'wb'))
-        rval = np.zeros(processer.load_and_process(fs.get('n04135315_18202.JPEG')).shape)
+        rval = np.zeros(processer.load_and_process(fs.get('n04135315_18202.JPEG'), 0).shape)
     return rval
 
 
@@ -519,4 +546,3 @@ class Imagenet(Imagenet_Base):
     """All the images in Imagenet.
     """
     pass
-

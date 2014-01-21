@@ -1,4 +1,3 @@
-import itertools
 import random
 import numpy as np
 import cPickle
@@ -12,13 +11,11 @@ from dataset import (Imagenet_filename_subset,
 from joblib import Memory
 
 
-
-
 #this is the dataset we used in pixel preproc screening
 class Challenge_Synsets_100_Random(Imagenet_filename_subset):
     def __init__(self):
         random.seed('Challenge_Synsets_100_Random')
-        synsets = random.sample(list(set(get2013_Categories())-set(broken_synsets)), 100)
+        synsets = random.sample(list(set(get2013_Categories()) - set(broken_synsets)), 100)
         num_per_synset = 200
         full_dict = self.get_full_filenames_dictionary()
         filenames = []
@@ -31,7 +28,7 @@ class Challenge_Synsets_100_Random(Imagenet_filename_subset):
 #this dataset is broken
 class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
     def __init__(self):
-        synsets =   \
+        synsets = \
             ['n03196217',
              'n02236044',
              'n02091831',
@@ -55,7 +52,7 @@ class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
         data = {'synset_list': synsets}
         super(Challenge_Synsets_20_Pixel_Hard, self).__init__(data=data)
         print 'THIS DATASET IS BROKEN: IT IS NOT PIXEL HARD'
-        raise NameError
+        #raise NameError
 
     def get_hmo_feats0(self):
         grid_file = IMAGENET_FS.get('Challenge_synsets_20_Pixel_hard_800.npy')
@@ -65,7 +62,7 @@ class Challenge_Synsets_20_Pixel_Hard(Imagenet_synset_subset):
 
 class Challenge_Synsets_2_Pixel_Hard(Imagenet_synset_subset):
     def __init__(self):
-        synsets =   \
+        synsets = \
             ['n03196217',
              'n02236044']
         data = {'synset_list': synsets}
@@ -133,7 +130,7 @@ class RandomSampleSubset(Imagenet):
 
 
 def get_pixel_hard_synsets():
-    folder = os.path.abspath(__file__+'/..')
+    folder = os.path.abspath(__file__ + '/..')
     synsets = cPickle.load(open(os.path.join(folder, 'PixelHardSynsetList.p'), 'rb'))
     return synsets
 
@@ -167,7 +164,8 @@ class PixelHardSynsets2013ChallengeTop40Screenset(RandomSampleSubset):
         clist = get2013_Categories()
         synsets = [c for c in synsets if c in clist][:40]
         num_per_synset = 250
-        super(PixelHardSynsets2013ChallengeTop40Screenset, self).__init__(synsets=synsets, num_per_synset=num_per_synset,
+        super(PixelHardSynsets2013ChallengeTop40Screenset, self).__init__(synsets=synsets,
+                                                                          num_per_synset=num_per_synset,
                                                                           seed=0)
 
 
@@ -177,7 +175,8 @@ class PixelHardSynsets2013ChallengeTop25Screenset(RandomSampleSubset):
         clist = get2013_Categories()
         synsets = [c for c in synsets if c in clist][:25]
         num_per_synset = 250
-        super(PixelHardSynsets2013ChallengeTop25Screenset, self).__init__(synsets=synsets, num_per_synset=num_per_synset,
+        super(PixelHardSynsets2013ChallengeTop25Screenset, self).__init__(synsets=synsets,
+                                                                          num_per_synset=num_per_synset,
                                                                           seed=0)
 
 
@@ -186,6 +185,7 @@ class HvM_Categories(RandomSampleSubset):
     Hand-chosen imagenet equivalents of HvM categories
     Has an attribute called translation dict explaining the mapping
     """
+
     def __init__(self):
         self.translation_dict = \
             {'Animals': 'n00015388',
@@ -197,9 +197,22 @@ class HvM_Categories(RandomSampleSubset):
              'Planes': 'n02691156',
              'Tables': 'n04379243'}
         synset_list = self.translation_dict.values()
-        num_per_synset = 200;
+        num_per_synset = 200
         seed = 'HvM_Categories'
         #8000 might still be too many images, here I'm subsetting
         # the synsets to get a size similar to one of the variation levels
         super(HvM_Categories, self).__init__(synsets=synset_list, seed=seed, num_per_synset=num_per_synset)
 
+
+class ChallengeSynsets2013(Imagenet_synset_subset):
+         def __init__(self):
+                 synsets = list(set(get2013_Categories()) - broken_synsets)
+                 data = {'synset_list': synsets}
+                 super(ChallengeSynsets2013, self).__init__(data=data)
+
+class ConvnetTest(Imagenet_filename_subset):
+        def __init__(self):
+            path_to_data = os.path.join(os.path.split(__file__)[0], 'convnet_test.p')
+            files = cPickle.load(open(path_to_data, 'rb'))
+            data = {'filenames': files}
+            super(ConvnetTest, self).__init__(data=data)
