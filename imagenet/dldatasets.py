@@ -216,3 +216,13 @@ class ConvnetTest(Imagenet_filename_subset):
             files = cPickle.load(open(path_to_data, 'rb'))
             data = {'filenames': files}
             super(ConvnetTest, self).__init__(data=data)
+
+
+class ModelHard20(Imagenet_synset_subset):
+    def __init__(self):
+        synsets = ['n02843684', 'n03958227', 'n03485794', 'n03938244', 'n02730930',
+                   'n04033995', 'n04209239', 'n03291819', 'n03125729', 'n03188531',
+                   'n04476259', 'n02834397', 'n04548362', 'n04026417', 'n03908618',
+                   'n03871628', 'n03709823', 'n03637318', 'n02840245', 'n02910353']
+        data = {'synset_list': synsets}
+        super(ModelHard20, self).__init__(data=data)
