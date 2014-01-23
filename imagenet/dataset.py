@@ -393,7 +393,7 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
         preproc['flatten'] = True
         return self.get_images(preproc, n_jobs)
 
-    def publish_images(self, img_inds, preproc, bucket_name):
+    def publish_images(self, img_inds, preproc, bucket_name, dummy_upload=False):
         ids = [get_id(str(image_id)+repr(preproc)) for image_id in self.meta['id'][img_inds]]
         source = get_img_source()
         if preproc is not None:
@@ -410,8 +410,9 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
             i += 1
             if i % 100 == 0:
                 print i/float(len(filenames))
-            k = b.new_key(image_id+'.jpg')
-            k.set_contents_from_file(source.get(str(filename)), policy='public-read')
+            if not dummy_upload:
+                k = b.new_key(image_id+'.jpg')
+                k.set_contents_from_file(source.get(str(filename)), policy='public-read')
             urls.append('https://s3.amazonaws.com/' + bucket_name + '/' + image_id + '.jpg')
         return urls
 
