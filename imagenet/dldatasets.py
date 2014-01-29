@@ -226,3 +226,11 @@ class ModelHard20(Imagenet_synset_subset):
                    'n03871628', 'n03709823', 'n03637318', 'n02840245', 'n02910353']
         data = {'synset_list': synsets}
         super(ModelHard20, self).__init__(data=data)
+
+
+class ModelHard8(Imagenet_synset_subset):
+    def __init__(self):
+        synsets = ['n02843684', 'n03958227', 'n03485794', 'n03938244', 'n02730930',
+                   'n04033995', 'n04209239', 'n03291819']
+        data = {'synset_list': synsets}
+        super(ModelHard8, self).__init__(data=data)
