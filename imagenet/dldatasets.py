@@ -210,6 +210,13 @@ class ChallengeSynsets2013(Imagenet_synset_subset):
                  data = {'synset_list': synsets}
                  super(ChallengeSynsets2013, self).__init__(data=data)
 
+class ChallengeSynsets2013_offline(Imagenet_synset_subset):
+    def __init__(self):
+        path = os.path.join(os.path.split(__file__)[0], 'Jan30Synsets.npy')
+        synsets = list(np.load(path))
+        data = {'synset_list': synsets}
+        super(ChallengeSynsets2013_offline, self).__init__(data=data)
+
 class ConvnetTest(Imagenet_filename_subset):
         def __init__(self):
             path_to_data = os.path.join(os.path.split(__file__)[0], 'convnet_test.p')

@@ -158,6 +158,7 @@ def download_2013_ILSCRV_synsets(num_per_synset='all', seed=None, path=None, fir
     return download_images_by_synset(synsets, seed=seed, num_per_synset=num_per_synset, path=path, firstonly=firstonly)
 
 
+#todo: use list from mongodb
 def get2013_Categories():
     """Get list of synsets in 2013 ILSCRV Challenge by scraping the challenge's website"""
     name_list = []
@@ -204,19 +205,22 @@ def save_filename_dict_from_img_folder(path=None):
 
 
 def get_word_dictionary():
-    words_text = urlopen("http://www.image-net.org/archive/words.txt").readlines()
-    word_dictionary = {}
-    for row in words_text:
-        word_dictionary[row.split()[0]] = ' '.join(row.split()[1:]).rstrip('\n')
-    return word_dictionary
+    #words_text = urlopen("http://www.image-net.org/archive/words.txt").readlines()
+    #word_dictionary = {}
+    #for row in words_text:
+    #    word_dictionary[row.split()[0]] = ' '.join(row.split()[1:]).rstrip('\n')
+    fs = get_img_source()
+    return cPickle.loads(fs.get('words_dict').read())
 
 
 def get_definition_dictionary():
-    gloss_text = urlopen("http://www.image-net.org/archive/gloss.txt").readlines()
-    definition_dictionary = {}
-    for row in gloss_text:
-        definition_dictionary[row.split()[0]] = ' '.join(row.split()[1:]).rstrip('\n')
-    return definition_dictionary
+    # gloss_text = urlopen("http://www.image-net.org/archive/gloss.txt").readlines()
+    # definition_dictionary = {}
+    # for row in gloss_text:
+    #     definition_dictionary[row.split()[0]] = ' '.join(row.split()[1:]).rstrip('\n')
+    # return definition_dictionary
+    fs = get_img_source()
+    return cPickle.loads(fs.get('definitions_dict').read())
 
 
 class Imagenet_Base(dataset_templates.ImageDatasetBase):
@@ -397,8 +401,6 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
         ids = [get_id(str(image_id)+repr(preproc)) for image_id in self.meta['id'][img_inds]]
         source = get_img_source()
         if preproc is not None:
-            I = self.get_images(self, preproc)
-
             raise NotImplementedError
         else:
             filenames = np.array(self.meta['filename'][img_inds])
