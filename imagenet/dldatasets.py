@@ -205,10 +205,11 @@ class HvM_Categories(RandomSampleSubset):
 
 
 class ChallengeSynsets2013(Imagenet_synset_subset):
-         def __init__(self):
-                 synsets = list(set(get2013_Categories()) - broken_synsets)
-                 data = {'synset_list': synsets}
-                 super(ChallengeSynsets2013, self).__init__(data=data)
+    def __init__(self):
+        synsets = list(set(get2013_Categories()) - broken_synsets)
+        data = {'synset_list': synsets}
+        super(ChallengeSynsets2013, self).__init__(data=data)
+
 
 class ChallengeSynsets2013_offline(Imagenet_synset_subset):
     def __init__(self):
@@ -216,6 +217,7 @@ class ChallengeSynsets2013_offline(Imagenet_synset_subset):
         synsets = list(np.load(path))
         data = {'synset_list': synsets}
         super(ChallengeSynsets2013_offline, self).__init__(data=data)
+
 
 class ConvnetTest(Imagenet_filename_subset):
         def __init__(self):
