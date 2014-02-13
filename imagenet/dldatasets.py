@@ -205,10 +205,19 @@ class HvM_Categories(RandomSampleSubset):
 
 
 class ChallengeSynsets2013(Imagenet_synset_subset):
-         def __init__(self):
-                 synsets = list(set(get2013_Categories()) - broken_synsets)
-                 data = {'synset_list': synsets}
-                 super(ChallengeSynsets2013, self).__init__(data=data)
+    def __init__(self):
+        synsets = list(set(get2013_Categories()) - broken_synsets)
+        data = {'synset_list': synsets}
+        super(ChallengeSynsets2013, self).__init__(data=data)
+
+
+class ChallengeSynsets2013_offline(Imagenet_synset_subset):
+    def __init__(self):
+        path = os.path.join(os.path.split(__file__)[0], 'Jan30Synsets.npy')
+        synsets = list(np.load(path))
+        data = {'synset_list': synsets}
+        super(ChallengeSynsets2013_offline, self).__init__(data=data)
+
 
 class ConvnetTest(Imagenet_filename_subset):
         def __init__(self):
@@ -216,3 +225,21 @@ class ConvnetTest(Imagenet_filename_subset):
             files = cPickle.load(open(path_to_data, 'rb'))
             data = {'filenames': files}
             super(ConvnetTest, self).__init__(data=data)
+
+
+class ModelHard20(Imagenet_synset_subset):
+    def __init__(self):
+        synsets = ['n02843684', 'n03958227', 'n03485794', 'n03938244', 'n02730930',
+                   'n04033995', 'n04209239', 'n03291819', 'n03125729', 'n03188531',
+                   'n04476259', 'n02834397', 'n04548362', 'n04026417', 'n03908618',
+                   'n03871628', 'n03709823', 'n03637318', 'n02840245', 'n02910353']
+        data = {'synset_list': synsets}
+        super(ModelHard20, self).__init__(data=data)
+
+
+class ModelHard8(Imagenet_synset_subset):
+    def __init__(self):
+        synsets = ['n02843684', 'n03958227', 'n03485794', 'n03938244', 'n02730930',
+                   'n04033995', 'n04209239', 'n03291819']
+        data = {'synset_list': synsets}
+        super(ModelHard8, self).__init__(data=data)

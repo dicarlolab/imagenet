@@ -7,14 +7,9 @@ imagenet dataset object conforming to skdata standards, and various related subs
 This folder will be created when using datasets:
 ~/.skdata/imagenet/images
 
-Which is where the images will be cached locally
+Which is where the images will may be cached locally (not default, see dataset.get_images for documentation)
 
-Under the hood, this initial version uses rsync to download files from a folder on mh17
-
-This means _you must configure your username to have passwordless ssh into mh17_ for downloading images to work
-
-Eventually this will be updated to use MongoDB on dicarloX
-
+You will need a user account on our database (or a similarly configured one). Email ardila@mit.edu.
 
 
 To install:

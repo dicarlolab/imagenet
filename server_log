@@ -1,0 +1,4 @@
+Starting the image net db.
+su mongodb
+numactl --interleave=all /usr/bin/mongod -f ~/mongodb_imagenet.conf
+numactl --interleave=all /usr/bin/mongod —f ~/mongodb_standard.conf
