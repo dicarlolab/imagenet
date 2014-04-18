@@ -40,9 +40,12 @@ def descendants(graph, source):
 
 #TODO : deal with username and accesskey so that we can share this code
 IMAGENET_DB_PORT = int(os.environ.get('IMAGENET_DB_PORT', 27017))
-IMAGENET_SOURCE_DB = pm.MongoClient('localhost', port=IMAGENET_DB_PORT).gridfs_example
-IMAGENET_FS = gridfs.GridFS(IMAGENET_SOURCE_DB)
-
+try:
+   IMAGENET_SOURCE_DB = pm.MongoClient('localhost', port=IMAGENET_DB_PORT).gridfs_example
+   IMAGENET_FS = gridfs.GridFS(IMAGENET_SOURCE_DB)
+except:
+    IMAGENET_SOURCE_DB = IMAGENET_FS = None
+    print 'cannot connect to db on port ', IMAGENET_DB_PORT
 
 def get_img_source():
     return IMAGENET_FS
