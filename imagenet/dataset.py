@@ -386,7 +386,8 @@ class Imagenet_Base(dataset_templates.ImageDatasetBase):
 
         """
         file_names = self.meta['filename']
-        file_ids = self.meta['id']
+        #file_ids = self.meta['id']
+        file_ids = np.arange(self.meta.shape[0])
         img_source = get_img_source()
         cachedir = self.imagenet_home('images')
         processor = ImgDownloaderPreprocessor(
@@ -466,13 +467,16 @@ class ImgDownloaderPreprocessor(dataset_templates.ImageLoaderPreprocesser):
         """
         if isinstance(file_names, str):
             file_names = np.array([file_names])
+        if isinstance(file_ids, int):
+            file_ids = np.array([file_ids])
         blocksize = 1
         numblocks = int(math.ceil(len(file_names) / float(blocksize)))
         filename_blocks = [file_names[i * blocksize: (i + 1) * blocksize].tolist() for i in range(numblocks)]
+        fileid_blocks = [file_ids[i * blocksize: (i+1) * blocksize].tolist() for i in range(numblocks)]
         results = Parallel(
             n_jobs=self.n_jobs)(
             delayed(download_and_process)(filename_block, id_block, self.preproc, cache=self.cache, cachedir=self.cachedir)
-            for filename_block, id_block in zip(filename_blocks, file_ids))
+            for filename_block, id_block in zip(filename_blocks, fileid_blocks))
         results = list(itertools.chain(*results))
         if len(file_names) > 1:
             return np.asarray(results)
@@ -486,7 +490,7 @@ import math
 
 def download_and_process(file_names, file_ids, preproc, cache=False, cachedir=None):
     processer = dataset_templates.ImageLoaderPreprocesser(preproc)
-    rvals = [download_and_process_core(fname, file_ids, processer, cache, cachedir) for fname in file_names]
+    rvals = [download_and_process_core(fname, file_id, processer, cache, cachedir) for fname, file_id in zip(file_names, file_ids)]
     return rvals
 
 
