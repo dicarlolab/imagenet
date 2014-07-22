@@ -211,8 +211,8 @@ class ChallengeSynsets2013(Imagenet_synset_subset):
         super(ChallengeSynsets2013, self).__init__(data=data)
 
 
-class ChallengeSynsets2013_offline(Imagenet_synset_subset, data=None):
-    def __init__(self):
+class ChallengeSynsets2013_offline(Imagenet_synset_subset, ):
+    def __init__(self, data=None):
         path = os.path.join(os.path.split(__file__)[0], 'Jan30Synsets.npy')
         synsets = list(np.load(path))
         if data is None:
