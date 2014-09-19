@@ -6,5 +6,4 @@ numpy
 pymongo
 joblib
 BeautifulSoup4
-networtx
 -e git+http://github.com/dicarlolab/dldata.git#egg=dldata
