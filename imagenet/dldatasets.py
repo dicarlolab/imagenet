@@ -222,7 +222,7 @@ class ChallengeSynsets2013_offline(Imagenet_synset_subset ):
         super(ChallengeSynsets2013_offline, self).__init__(data=data)
 
 
-class ChallengeSynsets2013_inanimatesubset_offline(Imagenet_synset_subset ):
+class ChallengeSynsets2013_inanimatesubset_offline(Imagenet_synset_subset):
     def __init__(self, data=None):
         path = os.path.join(os.path.split(__file__)[0], 'InanimateSynsets.npy')
         synsets = list(np.load(path))
@@ -230,7 +230,7 @@ class ChallengeSynsets2013_inanimatesubset_offline(Imagenet_synset_subset ):
             data = {'synset_list': synsets}
         else:
             data['synset_list'] = synsets
-        super(ChallengeSynsets2013_offline, self).__init__(data=data)
+        super(ChallengeSynsets2013_inanimatesubset_offline, self).__init__(data=data)
 
 
 class ConvnetTest(Imagenet_filename_subset):
